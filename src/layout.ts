@@ -43,6 +43,8 @@ export interface PlacedLine {
   marks: PlacedMark[];
   size: number;
   baseline: number;
+  /** Rightmost ink, in card space. Italic overhang makes this exceed the pen. */
+  right: number;
 }
 
 const MARK_GAP = 0.06;      // of cap, between the last letter and its edit mark
@@ -160,7 +162,13 @@ export class Layout {
   private place(
     text: string,
     cap: number,
-    slot: { x0: number; x1: number; baseline: number; field: 'top' | 'bottom' },
+    slot: {
+      x0: number;
+      x1: number;
+      fit_x1: number;
+      baseline: number;
+      field: 'top' | 'bottom';
+    },
   ): PlacedLine {
     const all = this.items(text, cap);
     const size = this.sizeFor(cap);
@@ -174,21 +182,25 @@ export class Layout {
     const natural = this.span(body, 0);
     const width = slot.x1 - slot.x0;
 
+    // Justify to the original run's width, but never squeeze letters together:
+    // longer text simply runs on to the right, towards the card's edge.
     const wanted = (width - natural) / gaps;
-    const track = Math.max(MIN_TRACK * cap, Math.min(MAX_TRACK * cap, wanted));
+    const track = natural >= width
+      ? 0
+      : Math.max(MIN_TRACK * cap, Math.min(MAX_TRACK * cap, wanted));
 
     const lead = body[0];
     const offset = lead !== undefined && lead.kind === 'glyph' ? lead.left : 0;
-    const spread = natural + track * gaps;
-    const start =
-      Math.abs(wanted - track) < 1e-6
-        ? slot.x0 - offset
-        : slot.x0 + (width - spread) / 2 - offset;
+    const start = slot.x0 - offset;
 
     const glyphs: PlacedGlyph[] = [];
     const marks: PlacedMark[] = [];
+    let right = start;
     const push = (it: Item, pen: number): void => {
-      if (it.kind === 'glyph') glyphs.push({ ch: it.ch, x: pen });
+      if (it.kind === 'glyph') {
+        glyphs.push({ ch: it.ch, x: pen });
+        right = Math.max(right, pen + it.right);
+      }
       if (it.kind === 'mark') {
         marks.push({
           mark: it.mark,
@@ -197,6 +209,7 @@ export class Layout {
           w: it.w,
           h: it.h,
         });
+        right = Math.max(right, pen + it.w);
       }
     };
 
@@ -263,7 +276,7 @@ export class Layout {
     room: number,
   ): boolean {
     const placed = this.place(text, slot.cap, {
-      x0: slot.x0, x1: slot.x1, baseline: 0, field: 'top',
+      x0: slot.x0, x1: slot.x1, fit_x1: slot.fit_x1, baseline: 0, field: 'top',
     });
     let right = 0;
     for (const g of placed.glyphs) right = Math.max(right, g.x - slot.x0);

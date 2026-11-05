@@ -80,10 +80,21 @@ async function main(): Promise<void> {
   };
 
   const sync = (field: 'top' | 'bottom', input: HTMLInputElement): void => {
-    const requested = input.value;
-    const clamped = renderer.clamp(requested, field);
-    const atLimit = clamped !== requested.toUpperCase().replace(/\s+/g, ' ').trim();
-    input.value = clamped;
+    const raw = input.value;
+    const upper = raw.toUpperCase().replace(/\s+/g, ' ');
+    const clamped = renderer.clamp(upper, field);
+    // a space the user just typed stays in the field, or they could never
+    // reach the second word
+    const shown = /\s$/.test(raw) ? `${clamped} ` : clamped;
+    if (shown !== raw) {
+      const caret = input.selectionStart;
+      input.value = shown;
+      if (caret !== null) {
+        const at = Math.min(caret, shown.length);
+        input.setSelectionRange(at, at);
+      }
+    }
+    const atLimit = clamped !== upper.trim();
     state[field] = clamped;
     input.toggleAttribute('aria-invalid', atLimit);
     hint.textContent = atLimit

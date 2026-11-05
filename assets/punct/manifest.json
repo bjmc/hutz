@@ -1,0 +1,96 @@
+{
+  "source": {
+    "file": "original.jpg",
+    "width": 960,
+    "height": 720
+  },
+  "roi": {
+    "x": 311,
+    "y": 241,
+    "w": 421,
+    "h": 245
+  },
+  "deskew_deg": -11.9,
+  "lines": [
+    {
+      "band": "A",
+      "y0": 24,
+      "y1": 64,
+      "field": "top",
+      "text": "WORKS ON"
+    },
+    {
+      "band": "B",
+      "y0": 68,
+      "y1": 106,
+      "field": "top",
+      "text": "CONTINGENCY?"
+    },
+    {
+      "band": "C",
+      "y0": 154,
+      "y1": 192,
+      "field": "bottom",
+      "text": "NO, MONEY DOWN"
+    }
+  ],
+  "plate": {
+    "file": "card/plate.jpg",
+    "width": 960,
+    "height": 720
+  },
+  "marks": [
+    {
+      "name": "comma",
+      "x": 64,
+      "y": 173,
+      "w": 21,
+      "h": 21,
+      "rgb": [
+        160,
+        2,
+        4
+      ],
+      "kind": "path"
+    },
+    {
+      "name": "qmark",
+      "x": 344,
+      "y": 42,
+      "w": 43,
+      "h": 79,
+      "rgb": [
+        169,
+        1,
+        4
+      ],
+      "kind": "path"
+    },
+    {
+      "name": "bang",
+      "x": 376,
+      "y": 124,
+      "w": 34,
+      "h": 65,
+      "rgb": [
+        141,
+        2,
+        5
+      ],
+      "kind": "mixed"
+    },
+    {
+      "name": "period",
+      "x": 376,
+      "y": 172,
+      "w": 18,
+      "h": 17,
+      "rgb": [
+        141,
+        2,
+        5
+      ],
+      "kind": "ellipse"
+    }
+  ]
+}

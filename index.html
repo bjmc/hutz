@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Works on contingency? No, money down!</title>
+    <link rel="stylesheet" href="./src/app.css" />
+  </head>
+  <body>
+    <main class="stage">
+      <figure class="card">
+        <canvas id="card" width="960" height="720"></canvas>
+      </figure>
+
+      <form class="panel" id="panel" autocomplete="off">
+        <h1>Money down</h1>
+
+        <label class="field">
+          <span>Top line</span>
+          <input id="top" type="text" spellcheck="false" value="WORKS ON CONTINGENCY?" />
+        </label>
+
+        <label class="field">
+          <span>Bottom line</span>
+          <input id="bottom" type="text" spellcheck="false" value="NO, MONEY DOWN!" />
+        </label>
+
+        <div class="actions">
+          <button type="button" id="download">Download PNG</button>
+          <button type="button" id="copy">Copy</button>
+          <button type="button" id="share" hidden>Share</button>
+        </div>
+
+        <p class="hint" id="hint" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
