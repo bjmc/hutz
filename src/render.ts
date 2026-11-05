@@ -28,6 +28,11 @@ export class Renderer {
     this.layout = new Layout(ctx, cfg);
   }
 
+  /** True when the text fits its field at full size. */
+  fits(text: string, field: 'top' | 'bottom'): boolean {
+    return this.layout.fits(text, field);
+  }
+
   /** Render the whole card at native size. */
   draw(state: CardState): void {
     const ctx = this.ctx;

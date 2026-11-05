@@ -73,14 +73,24 @@ async function main(): Promise<void> {
     writeHash(state);
   };
 
-  const sync = (): void => {
-    state = { top: topInput.value, bottom: bottomInput.value };
+  // Text never shrinks to fit: the fields reject input that would overflow, so
+  // every character keeps the card's measured size.
+  const sync = (field: 'top' | 'bottom', input: HTMLTextAreaElement): void => {
+    const candidate = { ...state, [field]: input.value };
+    if (renderer.fits(candidate[field], field)) {
+      state = candidate;
+      input.removeAttribute('aria-invalid');
+      hint.textContent = '';
+    } else {
+      input.value = state[field];
+      input.setAttribute('aria-invalid', 'true');
+      hint.textContent = 'That line is full — no more room on the card.';
+    }
     paint();
-    hint.textContent = '';
   };
 
-  topInput.addEventListener('input', sync);
-  bottomInput.addEventListener('input', sync);
+  topInput.addEventListener('input', () => sync('top', topInput));
+  bottomInput.addEventListener('input', () => sync('bottom', bottomInput));
 
   download.addEventListener('click', async () => {
     const blob = await renderer.toBlob();

@@ -48,11 +48,12 @@ export interface PlacedLine {
 const MARK_GAP = 0.06;      // of cap, between the last letter and its edit mark
 const MAX_TRACK = 0.22;     // of cap; past this the line is centred, not spread
 const MIN_TRACK = -0.06;
-const FIT_SLACK = 1.04;     // a line may hang this far past its slot
+const FIT_SLACK = 1.02;     // a line may hang this far past its slot
+const PROBE = 1000;         // font size used to read the font's own metrics
 
 export class Layout {
   private byChar = new Map<string, Mark>();
-  private capRatioCache: number | null = null;
+  private ratio: number | null = null;
 
   constructor(
     private ctx: CanvasRenderingContext2D,
@@ -61,16 +62,18 @@ export class Layout {
     for (const m of cfg.marks) this.byChar.set(m.char, m);
   }
 
-  /** Cap height as a fraction of font size, measured from the live font. */
+  private fontAt(size: number): void {
+    this.ctx.font = `${size}px ${this.cfg.font.family}`;
+  }
+
+  /** Cap height as a fraction of font size, read from the loaded font. */
   private capRatio(): number {
-    if (this.capRatioCache !== null) return this.capRatioCache;
-    const probe = 1000;
-    this.ctx.font = `${probe}px ${this.cfg.font.family}`;
+    if (this.ratio !== null) return this.ratio;
+    this.fontAt(PROBE);
     const m = this.ctx.measureText('H');
-    const ratio =
-      (m.actualBoundingBoxAscent + m.actualBoundingBoxDescent) / probe;
-    this.capRatioCache = ratio > 0 ? ratio : this.cfg.font.cap_ratio;
-    return this.capRatioCache;
+    const ratio = (m.actualBoundingBoxAscent + m.actualBoundingBoxDescent) / PROBE;
+    this.ratio = ratio > 0 ? ratio : this.cfg.font.cap_ratio;
+    return this.ratio;
   }
 
   private sizeFor(cap: number): number {
@@ -78,7 +81,7 @@ export class Layout {
   }
 
   private items(text: string, cap: number): Item[] {
-    this.ctx.font = `${this.sizeFor(cap)}px ${this.cfg.font.family}`;
+    this.fontAt(this.sizeFor(cap));
     const out: Item[] = [];
     let swallowSpace = false;
 
@@ -119,7 +122,12 @@ export class Layout {
     return out;
   }
 
-  /** Ink span of a run: first item's left edge to last item's right edge. */
+  /**
+   * Ink span of a run, measured over the letters only.
+   *
+   * Red marks are edits the writer squeezed in afterwards; a trailing mark
+   * hangs past the last letter instead of widening the justified run.
+   */
   private span(items: Item[], track: number): number {
     let pen = 0;
     let first = 0;
@@ -134,16 +142,19 @@ export class Layout {
           seen = true;
         }
         last = pen + it.right;
-      } else if (it.kind === 'mark') {
-        if (!seen) {
-          first = pen;
-          seen = true;
-        }
-        last = pen + it.w;
       }
       if (i < items.length - 1) pen += it.advance + track;
     }
     return seen ? last - first : 0;
+  }
+
+  /** Index just past the last glyph; items beyond it are trailing edit marks. */
+  private lastGlyphIndex(items: Item[]): number {
+    let last = -1;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i]!.kind === 'glyph') last = i;
+    }
+    return last;
   }
 
   private place(
@@ -151,16 +162,22 @@ export class Layout {
     cap: number,
     slot: { x0: number; x1: number; baseline: number; field: 'top' | 'bottom' },
   ): PlacedLine {
-    const items = this.items(text, cap);
+    const all = this.items(text, cap);
     const size = this.sizeFor(cap);
-    const gaps = Math.max(1, items.length - 1);
-    const natural = this.span(items, 0);
+
+    // trailing marks hang past the text, so they take no part in justification
+    const lastGlyph = this.lastGlyphIndex(all);
+    const body = lastGlyph >= 0 ? all.slice(0, lastGlyph + 1) : all;
+    const tail = lastGlyph >= 0 ? all.slice(lastGlyph + 1) : [];
+
+    const gaps = Math.max(1, body.length - 1);
+    const natural = this.span(body, 0);
     const width = slot.x1 - slot.x0;
 
     const wanted = (width - natural) / gaps;
     const track = Math.max(MIN_TRACK * cap, Math.min(MAX_TRACK * cap, wanted));
 
-    const lead = items[0];
+    const lead = body[0];
     const offset = lead !== undefined && lead.kind === 'glyph' ? lead.left : 0;
     const spread = natural + track * gaps;
     const start =
@@ -170,10 +187,7 @@ export class Layout {
 
     const glyphs: PlacedGlyph[] = [];
     const marks: PlacedMark[] = [];
-    let pen = start;
-
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i]!;
+    const push = (it: Item, pen: number): void => {
       if (it.kind === 'glyph') glyphs.push({ ch: it.ch, x: pen });
       if (it.kind === 'mark') {
         marks.push({
@@ -184,66 +198,72 @@ export class Layout {
           h: it.h,
         });
       }
-      if (i < items.length - 1) pen += it.advance + track;
+    };
+
+    let pen = start;
+    for (let i = 0; i < body.length; i++) {
+      push(body[i]!, pen);
+      if (i < body.length - 1) pen += body[i]!.advance + track;
+    }
+    pen += (body[body.length - 1]?.advance ?? 0) + track;
+    for (const it of tail) {
+      push(it, pen);
+      pen += it.advance + track;
     }
 
     return { field: slot.field, glyphs, marks, size, baseline: slot.baseline };
   }
 
+  private slots(field: 'top' | 'bottom') {
+    return this.cfg.lines.filter(l => l.field === field);
+  }
+
+  /** Greedy wrap at the slots' own size -- text never shrinks to fit. */
   private wrap(
     words: string[],
-    caps: number[],
-    widths: number[],
+    slots: { x0: number; x1: number; cap: number }[],
   ): { lines: string[]; overflow: boolean } {
     const lines: string[] = [];
     let i = 0;
 
-    for (let s = 0; s < widths.length && i < words.length; s++) {
-      const cap = caps[s]!;
-      const limit = widths[s]! * FIT_SLACK;
+    for (let s = 0; s < slots.length && i < words.length; s++) {
+      const slot = slots[s]!;
+      const limit = (slot.x1 - slot.x0) * FIT_SLACK;
       let j = i + 1;
       while (j < words.length) {
         const candidate = words.slice(i, j + 1).join(' ');
-        if (this.span(this.items(candidate, cap), 0) > limit) break;
+        if (this.span(this.items(candidate, slot.cap), 0) > limit) break;
         j++;
       }
       lines.push(words.slice(i, j).join(' '));
       i = j;
     }
 
-    if (i < words.length) return { lines, overflow: true };
-    return { lines, overflow: false };
+    return { lines, overflow: i < words.length };
   }
 
-  /** Lay out one field's text across its slots, shrinking until it fits. */
+  /** True when `raw` fits its field at full size. The UI rejects input if not. */
+  fits(raw: string, field: 'top' | 'bottom'): boolean {
+    const slots = this.slots(field);
+    const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
+    if (!text) return true;
+    if (!slots.length) return false;
+    return !this.wrap(text.split(' '), slots).overflow;
+  }
+
+  /** Lay out one field's text at its measured size, wrapping across slots. */
   build(raw: string, field: 'top' | 'bottom'): PlacedLine[] {
-    const slots = this.cfg.lines.filter(l => l.field === field);
+    const slots = this.slots(field);
     if (!slots.length) return [];
 
     const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
     if (!text) return [];
 
-    const words = text.split(' ');
-    const caps = slots.map(s => s.cap);
-    const widths = slots.map(s => s.x1 - s.x0);
-
-    // start at full size and step down until every word finds a slot; stop at
-    // 55% so a pathological input cannot shrink the text into illegibility
-    let scale = 1;
-    let lines: string[] = [];
-    for (; scale >= 0.55; scale -= 0.03) {
-      const attempt = this.wrap(
-        words,
-        caps.map(c => c * scale),
-        widths,
-      );
-      lines = attempt.lines;
-      if (!attempt.overflow) break;
-    }
+    const { lines } = this.wrap(text.split(' '), slots);
 
     return lines.map((line, k) => {
       const slot = slots[Math.min(k, slots.length - 1)]!;
-      return this.place(line, slot.cap * scale, slot);
+      return this.place(line, slot.cap, slot);
     });
   }
 }
