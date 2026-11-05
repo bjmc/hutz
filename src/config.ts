@@ -39,6 +39,7 @@ export const CONFIG: CardConfig = {
       "field": "top",
       "x0": 78,
       "x1": 310,
+      "fit_x1": 411,
       "baseline": 59,
       "cap": 30
     },
@@ -47,6 +48,7 @@ export const CONFIG: CardConfig = {
       "field": "top",
       "x0": 52,
       "x1": 341,
+      "fit_x1": 411,
       "baseline": 102,
       "cap": 29
     },
@@ -55,6 +57,7 @@ export const CONFIG: CardConfig = {
       "field": "bottom",
       "x0": 3,
       "x1": 379,
+      "fit_x1": 411,
       "baseline": 187,
       "cap": 28
     }

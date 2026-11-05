@@ -51,8 +51,8 @@ function readHash(): CardState {
 
 async function main(): Promise<void> {
   const canvas = el<HTMLCanvasElement>('card');
-  const topInput = el<HTMLTextAreaElement>('top');
-  const bottomInput = el<HTMLTextAreaElement>('bottom');
+  const topInput = el<HTMLInputElement>('top');
+  const bottomInput = el<HTMLInputElement>('bottom');
   const hint = el<HTMLParagraphElement>('hint');
   const download = el<HTMLButtonElement>('download');
   const copy = el<HTMLButtonElement>('copy');
@@ -64,7 +64,13 @@ async function main(): Promise<void> {
   const assets = await loadAssets();
   const renderer = new Renderer(canvas, CONFIG, assets);
 
-  let state = readHash();
+  // Both fields are clamped to what the card can hold, so text never shrinks
+  // and never spills off the edge.
+  const initial = readHash();
+  const state: CardState = {
+    top: renderer.clamp(initial.top, 'top'),
+    bottom: renderer.clamp(initial.bottom, 'bottom'),
+  };
   topInput.value = state.top;
   bottomInput.value = state.bottom;
 
@@ -73,19 +79,16 @@ async function main(): Promise<void> {
     writeHash(state);
   };
 
-  // Text never shrinks to fit: the fields reject input that would overflow, so
-  // every character keeps the card's measured size.
-  const sync = (field: 'top' | 'bottom', input: HTMLTextAreaElement): void => {
-    const candidate = { ...state, [field]: input.value };
-    if (renderer.fits(candidate[field], field)) {
-      state = candidate;
-      input.removeAttribute('aria-invalid');
-      hint.textContent = '';
-    } else {
-      input.value = state[field];
-      input.setAttribute('aria-invalid', 'true');
-      hint.textContent = 'That line is full — no more room on the card.';
-    }
+  const sync = (field: 'top' | 'bottom', input: HTMLInputElement): void => {
+    const requested = input.value;
+    const clamped = renderer.clamp(requested, field);
+    const atLimit = clamped !== requested.toUpperCase().replace(/\s+/g, ' ').trim();
+    input.value = clamped;
+    state[field] = clamped;
+    input.toggleAttribute('aria-invalid', atLimit);
+    hint.textContent = atLimit
+      ? 'That line is full — no more room on the card.'
+      : '';
     paint();
   };
 

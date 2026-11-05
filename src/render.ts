@@ -28,9 +28,9 @@ export class Renderer {
     this.layout = new Layout(ctx, cfg);
   }
 
-  /** True when the text fits its field at full size. */
-  fits(text: string, field: 'top' | 'bottom'): boolean {
-    return this.layout.fits(text, field);
+  /** Longest prefix of `text` that still fits its field. */
+  clamp(text: string, field: 'top' | 'bottom'): string {
+    return this.layout.clamp(text, field);
   }
 
   /** Render the whole card at native size. */

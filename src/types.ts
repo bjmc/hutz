@@ -13,6 +13,7 @@ export interface LineSlot {
   field: 'top' | 'bottom';
   x0: number;
   x1: number;
+  fit_x1: number;
   baseline: number;
   cap: number;
 }

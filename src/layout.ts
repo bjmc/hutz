@@ -205,10 +205,12 @@ export class Layout {
       push(body[i]!, pen);
       if (i < body.length - 1) pen += body[i]!.advance + track;
     }
-    pen += (body[body.length - 1]?.advance ?? 0) + track;
+    // a trailing mark sits immediately after the last glyph's advance; its own
+    // advance already carries the gap, so no extra tracking here
+    pen += body[body.length - 1]?.advance ?? 0;
     for (const it of tail) {
       push(it, pen);
-      pen += it.advance + track;
+      pen += it.advance;
     }
 
     return { field: slot.field, glyphs, marks, size, baseline: slot.baseline };
@@ -221,18 +223,25 @@ export class Layout {
   /** Greedy wrap at the slots' own size -- text never shrinks to fit. */
   private wrap(
     words: string[],
-    slots: { x0: number; x1: number; cap: number }[],
+    slots: { x0: number; x1: number; fit_x1: number; cap: number }[],
   ): { lines: string[]; overflow: boolean } {
     const lines: string[] = [];
     let i = 0;
 
     for (let s = 0; s < slots.length && i < words.length; s++) {
       const slot = slots[s]!;
-      const limit = (slot.x1 - slot.x0) * FIT_SLACK;
+      const room = slot.fit_x1 - slot.x0;
+
+      // a single word that cannot fit on its own line is an overflow, not a
+      // line: greedy wrapping would otherwise admit it and spill off the card
+      if (!this.fitsRun(words[i]!, slot, room)) {
+        return { lines, overflow: true };
+      }
+
       let j = i + 1;
       while (j < words.length) {
         const candidate = words.slice(i, j + 1).join(' ');
-        if (this.span(this.items(candidate, slot.cap), 0) > limit) break;
+        if (!this.fitsRun(candidate, slot, room)) break;
         j++;
       }
       lines.push(words.slice(i, j).join(' '));
@@ -242,6 +251,26 @@ export class Layout {
     return { lines, overflow: i < words.length };
   }
 
+  /**
+   * Whether a run stays inside the card once justified.
+   *
+   * Justification re-spaces the letters to fill the slot, so the only way to
+   * know the real right edge is to lay the run out and measure it.
+   */
+  private fitsRun(
+    text: string,
+    slot: { x0: number; x1: number; fit_x1: number; cap: number },
+    room: number,
+  ): boolean {
+    const placed = this.place(text, slot.cap, {
+      x0: slot.x0, x1: slot.x1, baseline: 0, field: 'top',
+    });
+    let right = 0;
+    for (const g of placed.glyphs) right = Math.max(right, g.x - slot.x0);
+    for (const m of placed.marks) right = Math.max(right, m.x + m.w - slot.x0);
+    return right <= room * FIT_SLACK;
+  }
+
   /** True when `raw` fits its field at full size. The UI rejects input if not. */
   fits(raw: string, field: 'top' | 'bottom'): boolean {
     const slots = this.slots(field);
@@ -249,6 +278,39 @@ export class Layout {
     if (!text) return true;
     if (!slots.length) return false;
     return !this.wrap(text.split(' '), slots).overflow;
+  }
+
+  /**
+   * Longest prefix of `raw` that still fits, so typing simply stops.
+   *
+   * Whole words are admitted first; a partially typed word is then extended
+   * character by character. That way a long run of letters cannot spill off
+   * the card even though it has no spaces to wrap on.
+   */
+  clamp(raw: string, field: 'top' | 'bottom'): string {
+    const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
+    if (this.fits(text, field)) return text;
+
+    const words = text.split(' ');
+    let best = '';
+    let taken = '';
+
+    for (const word of words) {
+      const candidate = taken ? `${taken} ${word}` : word;
+      if (this.fits(candidate, field)) {
+        taken = candidate;
+        best = candidate;
+        continue;
+      }
+      // this word does not fit whole: keep as much of it as the card allows
+      for (let i = 1; i <= word.length; i++) {
+        const partial = taken ? `${taken} ${word.slice(0, i)}` : word.slice(0, i);
+        if (this.fits(partial, field)) best = partial;
+        else break;
+      }
+      break;
+    }
+    return best;
   }
 
   /** Lay out one field's text at its measured size, wrapping across slots. */
