@@ -1,0 +1,157 @@
+@font-face {
+  font-family: 'CardItalic';
+  src: url('../assets/fonts/card-italic.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+}
+
+:root {
+  --yellow: #ffd90f;
+  --yellow-deep: #f5c400;
+  --ink: #221a08;
+  --paper: #fffbea;
+  --line: #e3d7a5;
+  --gap: clamp(16px, 3vw, 40px);
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--yellow);
+  color: var(--ink);
+  font: 500 16px/1.5 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  display: grid;
+  place-items: center;
+  padding: var(--gap);
+}
+
+.stage {
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 22rem);
+  align-items: start;
+  width: min(100%, 78rem);
+}
+
+@media (max-width: 60rem) {
+  .stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.card {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgb(0 0 0 / 12%), 0 14px 40px -18px rgb(0 0 0 / 45%);
+}
+
+.card canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.panel {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  padding: 22px;
+  background: var(--paper);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgb(0 0 0 / 12%), 0 14px 40px -18px rgb(0 0 0 / 45%);
+}
+
+.panel h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6c5c22;
+}
+
+.field textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 3.2em;
+  padding: 10px 12px;
+  font: inherit;
+  font-family: 'CardItalic', ui-monospace, monospace;
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.field textarea:focus-visible {
+  outline: 2px solid var(--yellow-deep);
+  outline-offset: 1px;
+  border-color: var(--yellow-deep);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions button {
+  flex: 1 1 auto;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--yellow);
+  border: 1px solid #d9bb00;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  background: var(--yellow-deep);
+}
+
+.actions button:active {
+  transform: translateY(1px);
+}
+
+.actions button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.hint {
+  margin: 0;
+  min-height: 1.3em;
+  font-size: 0.8rem;
+  color: #6c5c22;
+}

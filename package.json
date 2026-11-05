@@ -1,0 +1,14 @@
+{
+  "name": "hutz-meme",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen": "bun tools/gen_assets.ts",
+    "dev": "bun tools/serve.ts",
+    "build": "bun tools/build_site.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
