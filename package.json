@@ -6,9 +6,8 @@
     "gen": "bun tools/gen_assets.ts",
     "dev": "bun tools/serve.ts",
     "build": "bun tools/build_site.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "bun check"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
   }
 }
