@@ -65,13 +65,13 @@ export const CONFIG: CardConfig = {
   "fields": {
     "top": {
       "center": 196.5,
-      "half": 214.5,
+      "half": 144.5,
       "min_x": -36.7,
       "max_x": 463.5
     },
     "bottom": {
       "center": 191.0,
-      "half": 220.0,
+      "half": 188.0,
       "min_x": -51.6,
       "max_x": 443.4
     }

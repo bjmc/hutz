@@ -43,10 +43,12 @@ export interface PlacedLine {
   marks: PlacedMark[];
   size: number;
   baseline: number;
-  /** Leftmost ink, in card space. */
+  /** Leftmost ink of the letters, in card space. */
   left: number;
-  /** Rightmost ink, in card space. */
+  /** Rightmost ink of the letters, in card space. */
   right: number;
+  /** Rightmost ink including the marks that hang past the last letter. */
+  markRight: number;
 }
 
 /** A field's typesetting box: lines are centred on `center` within [x0, x1]. */
@@ -188,6 +190,7 @@ export class Layout {
     const marks: PlacedMark[] = [];
     let inkLeft = Infinity;
     let inkRight = -Infinity;
+    let markRight = -Infinity;
     const push = (it: Item, pen: number): void => {
       if (it.kind === 'glyph') {
         glyphs.push({ ch: it.ch, x: pen });
@@ -202,8 +205,7 @@ export class Layout {
           w: it.w,
           h: it.h,
         });
-        inkLeft = Math.min(inkLeft, pen);
-        inkRight = Math.max(inkRight, pen + it.w);
+        markRight = Math.max(markRight, pen + it.w);
       }
     };
 
@@ -220,6 +222,7 @@ export class Layout {
       pen += it.advance;
     }
 
+    const glyphRight = Number.isFinite(inkRight) ? inkRight : start;
     return {
       field: slot.field,
       glyphs,
@@ -227,7 +230,8 @@ export class Layout {
       size,
       baseline: slot.baseline,
       left: Number.isFinite(inkLeft) ? inkLeft : start,
-      right: Number.isFinite(inkRight) ? inkRight : start,
+      right: glyphRight,
+      markRight: Number.isFinite(markRight) ? markRight : glyphRight,
     };
   }
 
@@ -327,8 +331,9 @@ export class Layout {
   /**
    * Whether a run stays inside the box once centred in it.
    *
-   * The run is placed, then its ink is measured -- italics overhang the pen, so
-   * the real edges are needed.
+   * Only the letters are held to the box: a mark is an edit squeezed in after
+   * the line was written, so it may hang past the last letter. It still has to
+   * fall inside the printed card, which is what `max_x` records.
    */
   private fitsRun(
     text: string,
@@ -336,7 +341,12 @@ export class Layout {
     box: Box,
   ): boolean {
     const placed = this.place(text, this.capFor(slot.field), slot, box);
-    return placed.left >= box.x0 - 1 && placed.right <= box.x1 + 1;
+    const card = this.cfg.fields[slot.field];
+    return (
+      placed.left >= box.x0 - 1 &&
+      placed.right <= box.x1 + 1 &&
+      placed.markRight <= card.max_x + 1
+    );
   }
 
   /** True when `raw` fits its field at full size. The UI rejects input if not. */
