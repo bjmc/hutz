@@ -4,6 +4,8 @@ interface GlyphItem {
   kind: 'glyph';
   ch: string;
   advance: number;
+  /** Horizontal shift applied before drawing, from the font's kerning pair. */
+  kern: number;
   left: number;
   right: number;
 }
@@ -93,6 +95,9 @@ export class Layout {
     this.fontAt(this.sizeFor(cap));
     const out: Item[] = [];
     let swallowSpace = false;
+    // the immediately preceding letter, when nothing separates the two: that is
+    // the only case where the font's kerning pair applies
+    let prev: string | null = null;
 
     for (const ch of text) {
       if (swallowSpace && ch === ' ') continue;
@@ -111,19 +116,32 @@ export class Layout {
           dy: mark.dy * scale,
         });
         swallowSpace = true;
+        prev = null;
         continue;
       }
 
       if (ch === ' ') {
         out.push({ kind: 'space', advance: this.cfg.font.word_space * cap });
+        prev = null;
         continue;
       }
 
+      // The font's kern pair moves this glyph relative to where the previous
+      // advance would land it, so it has to be carried on the glyph itself;
+      // folding it into the previous advance would gap the wrong side.
       const m = this.ctx.measureText(ch);
+      const kern = prev === null
+        ? 0
+        : this.ctx.measureText(prev + ch).width
+        - this.ctx.measureText(prev).width
+        - m.width;
+      prev = ch;
+
       out.push({
         kind: 'glyph',
         ch,
         advance: m.width,
+        kern,
         left: -m.actualBoundingBoxLeft,
         right: m.actualBoundingBoxRight,
       });
@@ -145,6 +163,8 @@ export class Layout {
 
     for (let i = 0; i < items.length; i++) {
       const it = items[i]!;
+      // kerns accumulate down the run, exactly as the shaper would place them
+      pen += it.kind === 'glyph' ? it.kern : 0;
       if (it.kind === 'glyph') {
         if (!seen) {
           first = pen + it.left;
@@ -211,8 +231,11 @@ export class Layout {
 
     let pen = start;
     for (let i = 0; i < body.length; i++) {
-      push(body[i]!, pen);
-      if (i < body.length - 1) pen += body[i]!.advance;
+      const it = body[i]!;
+      // kerns accumulate down the run, as the shaper would place them
+      if (it.kind === 'glyph') pen += it.kern;
+      push(it, pen);
+      if (i < body.length - 1) pen += it.advance;
     }
     // a trailing mark sits immediately after the last glyph's advance; its own
     // advance already carries the gap
