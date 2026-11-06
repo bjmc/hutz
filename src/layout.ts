@@ -49,6 +49,12 @@ export interface PlacedLine {
   right: number;
 }
 
+/** A field's typesetting box: lines are centred on `center` within [x0, x1]. */
+interface Box {
+  x0: number;
+  x1: number;
+}
+
 const MARK_GAP = 0.06;      // of cap, between the last letter and its edit mark
 const PROBE = 1000;         // font size used to read the font's own metrics
 
@@ -161,41 +167,22 @@ export class Layout {
   private place(
     text: string,
     cap: number,
-    slot: {
-      x0: number;
-      x1: number;
-      card_x0: number;
-      card_x1: number;
-      baseline: number;
-      field: 'top' | 'bottom';
-    },
+    slot: { baseline: number; field: 'top' | 'bottom' },
+    box: Box,
   ): PlacedLine {
     const all = this.items(text, cap);
     const size = this.sizeFor(cap);
 
-    // trailing marks hang past the text, so they take no part in justification
+    // trailing marks hang past the text, so they take no part in centring
     const lastGlyph = this.lastGlyphIndex(all);
     const body = lastGlyph >= 0 ? all.slice(0, lastGlyph + 1) : all;
     const tail = lastGlyph >= 0 ? all.slice(lastGlyph + 1) : [];
 
-    // A short run sits where the original did. A long one pushes the left
-    // margin out and the right margin out, only as far as it has to, never
-    // past the printed card.
+    // centre the run's ink in the box; spacing stays the font's own advance
     const natural = this.span(body, 0);
-    const overflow = Math.max(0, natural - (slot.x1 - slot.x0));
-    let left = Math.min(overflow / 2, Math.max(0, slot.x0 - slot.card_x0));
-    let right = Math.min(overflow / 2, Math.max(0, slot.card_x1 - slot.x1));
-    const rest = overflow - left - right;
-    if (rest > 0) {
-      const room = Math.max(0, slot.x0 - slot.card_x0) - left;
-      const take = Math.min(rest, room);
-      left += take;
-      right += Math.min(rest - take, Math.max(0, slot.card_x1 - slot.x1) - right);
-    }
-
     const lead = body[0];
     const offset = lead !== undefined && lead.kind === 'glyph' ? lead.left : 0;
-    const start = slot.x0 - left - offset;
+    const start = (box.x0 + box.x1) / 2 - natural / 2 - offset;
 
     const glyphs: PlacedGlyph[] = [];
     const marks: PlacedMark[] = [];
@@ -248,24 +235,70 @@ export class Layout {
     return this.cfg.lines.filter(l => l.field === field);
   }
 
-  /** Debug hook: natural width of a run before any justification. */
+  private capFor(field: 'top' | 'bottom'): number {
+    return this.slots(field)[0]?.cap ?? 0;
+  }
+
+  /** Debug hook: natural width of a run before any centring. */
   measure(raw: string, field: 'top' | 'bottom'): number[] {
     const slots = this.slots(field);
     const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
     return slots.map(s => this.span(this.items(text, s.cap), 0));
   }
 
-  /** Greedy wrap at the slots' own size -- text never shrinks to fit. */
+  /**
+   * Greedy wrap, widening the box only when the original one cannot hold the
+   * text.
+   *
+   * `t` runs from 0 (the box the original was written in) to 1 (the printed
+   * card). Left and right grow to their own limits, so a side with more card
+   * beside it keeps expanding after the other has stopped. The smallest `t`
+   * that fits wins, so the box grows only as far as the text needs.
+   */
   private wrap(
     words: string[],
-    slots: {
-      x0: number;
-      x1: number;
-      card_x0: number;
-      card_x1: number;
-      cap: number;
-    }[],
+    field: 'top' | 'bottom',
+  ): { lines: string[]; overflow: boolean; box: Box } {
+    const base = this.boxAt(field, 0);
+    const first = this.wrapAt(words, field, base);
+    if (!first.overflow) return { ...first, box: base };
+
+    const full = this.boxAt(field, 1);
+    let fit = this.wrapAt(words, field, full);
+    if (fit.overflow) return { ...fit, box: full };
+
+    let lo = 0;
+    let hi = 1;
+    for (let n = 0; n < 12; n++) {
+      const mid = (lo + hi) / 2;
+      const attempt = this.wrapAt(words, field, this.boxAt(field, mid));
+      if (attempt.overflow) {
+        lo = mid;
+      } else {
+        fit = attempt;
+        hi = mid;
+      }
+    }
+    return { ...fit, box: this.boxAt(field, hi) };
+  }
+
+  /** The field's box at growth `t`: 0 = original, 1 = the printed card. */
+  private boxAt(field: 'top' | 'bottom', t: number): Box {
+    const f = this.cfg.fields[field];
+    const x0 = f.center - f.half;
+    const x1 = f.center + f.half;
+    return {
+      x0: x0 + t * (f.min_x - x0),
+      x1: x1 + t * (f.max_x - x1),
+    };
+  }
+
+  private wrapAt(
+    words: string[],
+    field: 'top' | 'bottom',
+    box: Box,
   ): { lines: string[]; overflow: boolean } {
+    const slots = this.slots(field);
     const lines: string[] = [];
     let i = 0;
 
@@ -274,14 +307,14 @@ export class Layout {
 
       // a single word that cannot fit on its own line is an overflow, not a
       // line: greedy wrapping would otherwise admit it and spill off the card
-      if (!this.fitsRun(words[i]!, slot)) {
+      if (!this.fitsRun(words[i]!, slot, box)) {
         return { lines, overflow: true };
       }
 
       let j = i + 1;
       while (j < words.length) {
         const candidate = words.slice(i, j + 1).join(' ');
-        if (!this.fitsRun(candidate, slot)) break;
+        if (!this.fitsRun(candidate, slot, box)) break;
         j++;
       }
       lines.push(words.slice(i, j).join(' '));
@@ -292,39 +325,26 @@ export class Layout {
   }
 
   /**
-   * Whether a run stays inside the printed card once laid out.
+   * Whether a run stays inside the box once centred in it.
    *
-   * A long run is allowed to widen its margins, so the real edges have to be
-   * measured after placement rather than guessed from the slot's width.
+   * The run is placed, then its ink is measured -- italics overhang the pen, so
+   * the real edges are needed.
    */
   private fitsRun(
     text: string,
-    slot: {
-      x0: number;
-      x1: number;
-      card_x0: number;
-      card_x1: number;
-      cap: number;
-    },
+    slot: { baseline: number; field: 'top' | 'bottom' },
+    box: Box,
   ): boolean {
-    const placed = this.place(text, slot.cap, {
-      x0: slot.x0,
-      x1: slot.x1,
-      card_x0: slot.card_x0,
-      card_x1: slot.card_x1,
-      baseline: 0,
-      field: 'top',
-    });
-    return placed.left >= slot.card_x0 - 1 && placed.right <= slot.card_x1 + 1;
+    const placed = this.place(text, this.capFor(slot.field), slot, box);
+    return placed.left >= box.x0 - 1 && placed.right <= box.x1 + 1;
   }
 
   /** True when `raw` fits its field at full size. The UI rejects input if not. */
   fits(raw: string, field: 'top' | 'bottom'): boolean {
-    const slots = this.slots(field);
     const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
     if (!text) return true;
-    if (!slots.length) return false;
-    return !this.wrap(text.split(' '), slots).overflow;
+    if (!this.slots(field).length) return false;
+    return !this.wrap(text.split(' '), field).overflow;
   }
 
   /**
@@ -368,11 +388,11 @@ export class Layout {
     const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
     if (!text) return [];
 
-    const { lines } = this.wrap(text.split(' '), slots);
+    const { lines, box } = this.wrap(text.split(' '), field);
 
     return lines.map((line, k) => {
       const slot = slots[Math.min(k, slots.length - 1)]!;
-      return this.place(line, slot.cap, slot);
+      return this.place(line, slot.cap, slot, box);
     });
   }
 }

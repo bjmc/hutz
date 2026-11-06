@@ -16,9 +16,17 @@ export interface LineSlot {
   fit_x1: number;
   baseline: number;
   cap: number;
-  /** Printed card edges at this band's height, before padding. */
-  card_x0: number;
-  card_x1: number;
+}
+
+/**
+ * The box a field is typeset in: lines are centred on `center` and wrapped to
+ * `half` either side. `min_x`/`max_x` are how far the box may grow, to the card.
+ */
+export interface FieldBounds {
+  center: number;
+  half: number;
+  min_x: number;
+  max_x: number;
 }
 
 export interface CardConfig {
@@ -33,6 +41,7 @@ export interface CardConfig {
     word_space: number;
   };
   lines: LineSlot[];
+  fields: { top: FieldBounds; bottom: FieldBounds };
   marks: Mark[];
 }
 
