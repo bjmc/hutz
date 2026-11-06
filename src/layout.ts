@@ -43,14 +43,13 @@ export interface PlacedLine {
   marks: PlacedMark[];
   size: number;
   baseline: number;
-  /** Rightmost ink, in card space. Italic overhang makes this exceed the pen. */
+  /** Leftmost ink, in card space. */
+  left: number;
+  /** Rightmost ink, in card space. */
   right: number;
 }
 
 const MARK_GAP = 0.06;      // of cap, between the last letter and its edit mark
-const MAX_TRACK = 0.22;     // of cap; past this the line is centred, not spread
-const MIN_TRACK = -0.06;
-const FIT_SLACK = 1.02;     // a line may hang this far past its slot
 const PROBE = 1000;         // font size used to read the font's own metrics
 
 export class Layout {
@@ -165,7 +164,8 @@ export class Layout {
     slot: {
       x0: number;
       x1: number;
-      fit_x1: number;
+      card_x0: number;
+      card_x1: number;
       baseline: number;
       field: 'top' | 'bottom';
     },
@@ -178,28 +178,34 @@ export class Layout {
     const body = lastGlyph >= 0 ? all.slice(0, lastGlyph + 1) : all;
     const tail = lastGlyph >= 0 ? all.slice(lastGlyph + 1) : [];
 
-    const gaps = Math.max(1, body.length - 1);
+    // A short run sits where the original did. A long one pushes the left
+    // margin out and the right margin out, only as far as it has to, never
+    // past the printed card.
     const natural = this.span(body, 0);
-    const width = slot.x1 - slot.x0;
-
-    // Justify to the original run's width, but never squeeze letters together:
-    // longer text simply runs on to the right, towards the card's edge.
-    const wanted = (width - natural) / gaps;
-    const track = natural >= width
-      ? 0
-      : Math.max(MIN_TRACK * cap, Math.min(MAX_TRACK * cap, wanted));
+    const overflow = Math.max(0, natural - (slot.x1 - slot.x0));
+    let left = Math.min(overflow / 2, Math.max(0, slot.x0 - slot.card_x0));
+    let right = Math.min(overflow / 2, Math.max(0, slot.card_x1 - slot.x1));
+    const rest = overflow - left - right;
+    if (rest > 0) {
+      const room = Math.max(0, slot.x0 - slot.card_x0) - left;
+      const take = Math.min(rest, room);
+      left += take;
+      right += Math.min(rest - take, Math.max(0, slot.card_x1 - slot.x1) - right);
+    }
 
     const lead = body[0];
     const offset = lead !== undefined && lead.kind === 'glyph' ? lead.left : 0;
-    const start = slot.x0 - offset;
+    const start = slot.x0 - left - offset;
 
     const glyphs: PlacedGlyph[] = [];
     const marks: PlacedMark[] = [];
-    let right = start;
+    let inkLeft = Infinity;
+    let inkRight = -Infinity;
     const push = (it: Item, pen: number): void => {
       if (it.kind === 'glyph') {
         glyphs.push({ ch: it.ch, x: pen });
-        right = Math.max(right, pen + it.right);
+        inkLeft = Math.min(inkLeft, pen + it.left);
+        inkRight = Math.max(inkRight, pen + it.right);
       }
       if (it.kind === 'mark') {
         marks.push({
@@ -209,52 +215,73 @@ export class Layout {
           w: it.w,
           h: it.h,
         });
-        right = Math.max(right, pen + it.w);
+        inkLeft = Math.min(inkLeft, pen);
+        inkRight = Math.max(inkRight, pen + it.w);
       }
     };
 
     let pen = start;
     for (let i = 0; i < body.length; i++) {
       push(body[i]!, pen);
-      if (i < body.length - 1) pen += body[i]!.advance + track;
+      if (i < body.length - 1) pen += body[i]!.advance;
     }
     // a trailing mark sits immediately after the last glyph's advance; its own
-    // advance already carries the gap, so no extra tracking here
+    // advance already carries the gap
     pen += body[body.length - 1]?.advance ?? 0;
     for (const it of tail) {
       push(it, pen);
       pen += it.advance;
     }
 
-    return { field: slot.field, glyphs, marks, size, baseline: slot.baseline };
+    return {
+      field: slot.field,
+      glyphs,
+      marks,
+      size,
+      baseline: slot.baseline,
+      left: Number.isFinite(inkLeft) ? inkLeft : start,
+      right: Number.isFinite(inkRight) ? inkRight : start,
+    };
   }
 
   private slots(field: 'top' | 'bottom') {
     return this.cfg.lines.filter(l => l.field === field);
   }
 
+  /** Debug hook: natural width of a run before any justification. */
+  measure(raw: string, field: 'top' | 'bottom'): number[] {
+    const slots = this.slots(field);
+    const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
+    return slots.map(s => this.span(this.items(text, s.cap), 0));
+  }
+
   /** Greedy wrap at the slots' own size -- text never shrinks to fit. */
   private wrap(
     words: string[],
-    slots: { x0: number; x1: number; fit_x1: number; cap: number }[],
+    slots: {
+      x0: number;
+      x1: number;
+      card_x0: number;
+      card_x1: number;
+      cap: number;
+    }[],
   ): { lines: string[]; overflow: boolean } {
     const lines: string[] = [];
     let i = 0;
 
     for (let s = 0; s < slots.length && i < words.length; s++) {
       const slot = slots[s]!;
-      const room = slot.fit_x1 - slot.x0;
 
       // a single word that cannot fit on its own line is an overflow, not a
       // line: greedy wrapping would otherwise admit it and spill off the card
-      if (!this.fitsRun(words[i]!, slot, room)) {
+      if (!this.fitsRun(words[i]!, slot)) {
         return { lines, overflow: true };
       }
 
       let j = i + 1;
       while (j < words.length) {
         const candidate = words.slice(i, j + 1).join(' ');
-        if (!this.fitsRun(candidate, slot, room)) break;
+        if (!this.fitsRun(candidate, slot)) break;
         j++;
       }
       lines.push(words.slice(i, j).join(' '));
@@ -265,23 +292,30 @@ export class Layout {
   }
 
   /**
-   * Whether a run stays inside the card once justified.
+   * Whether a run stays inside the printed card once laid out.
    *
-   * Justification re-spaces the letters to fill the slot, so the only way to
-   * know the real right edge is to lay the run out and measure it.
+   * A long run is allowed to widen its margins, so the real edges have to be
+   * measured after placement rather than guessed from the slot's width.
    */
   private fitsRun(
     text: string,
-    slot: { x0: number; x1: number; fit_x1: number; cap: number },
-    room: number,
+    slot: {
+      x0: number;
+      x1: number;
+      card_x0: number;
+      card_x1: number;
+      cap: number;
+    },
   ): boolean {
     const placed = this.place(text, slot.cap, {
-      x0: slot.x0, x1: slot.x1, fit_x1: slot.fit_x1, baseline: 0, field: 'top',
+      x0: slot.x0,
+      x1: slot.x1,
+      card_x0: slot.card_x0,
+      card_x1: slot.card_x1,
+      baseline: 0,
+      field: 'top',
     });
-    let right = 0;
-    for (const g of placed.glyphs) right = Math.max(right, g.x - slot.x0);
-    for (const m of placed.marks) right = Math.max(right, m.x + m.w - slot.x0);
-    return right <= room * FIT_SLACK;
+    return placed.left >= slot.card_x0 - 1 && placed.right <= slot.card_x1 + 1;
   }
 
   /** True when `raw` fits its field at full size. The UI rejects input if not. */

@@ -16,6 +16,9 @@ export interface LineSlot {
   fit_x1: number;
   baseline: number;
   cap: number;
+  /** Printed card edges at this band's height, before padding. */
+  card_x0: number;
+  card_x1: number;
 }
 
 export interface CardConfig {

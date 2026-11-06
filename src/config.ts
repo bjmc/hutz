@@ -41,7 +41,9 @@ export const CONFIG: CardConfig = {
       "x1": 310,
       "fit_x1": 411,
       "baseline": 59,
-      "cap": 30
+      "cap": 30,
+      "card_x0": -29.1,
+      "card_x1": 463.5
     },
     {
       "band": "B",
@@ -50,7 +52,9 @@ export const CONFIG: CardConfig = {
       "x1": 341,
       "fit_x1": 411,
       "baseline": 102,
-      "cap": 29
+      "cap": 29,
+      "card_x0": -36.7,
+      "card_x1": 456.7
     },
     {
       "band": "C",
@@ -59,7 +63,9 @@ export const CONFIG: CardConfig = {
       "x1": 379,
       "fit_x1": 411,
       "baseline": 187,
-      "cap": 28
+      "cap": 28,
+      "card_x0": -51.6,
+      "card_x1": 443.4
     }
   ],
   "marks": [
