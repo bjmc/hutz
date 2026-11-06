@@ -72,7 +72,7 @@ export class Layout {
   }
 
   private fontAt(size: number): void {
-    this.ctx.font = `${size}px ${this.cfg.font.family}`;
+    this.ctx.font = `italic 700 ${size}px ${this.cfg.font.family}`;
   }
 
   /** Cap height as a fraction of font size, read from the loaded font. */

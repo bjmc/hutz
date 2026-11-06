@@ -29,8 +29,8 @@ export const CONFIG: CardConfig = {
   },
   "font": {
     "family": "CardItalic",
-    "cap_ratio": 0.6575,
-    "advance_ratio": 0.60012,
+    "cap_ratio": 0.66,
+    "advance_ratio": 0.98801,
     "word_space": 0.83
   },
   "lines": [

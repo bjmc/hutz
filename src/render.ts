@@ -71,7 +71,7 @@ export class Renderer {
     ctx.fillStyle = ink;
 
     for (const line of lines) {
-      ctx.font = `${line.size}px ${family}`;
+      ctx.font = `italic 700 ${line.size}px ${family}`;
       for (const glyph of line.glyphs) {
         ctx.fillText(glyph.ch, glyph.x, line.baseline);
       }
