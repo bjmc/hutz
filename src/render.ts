@@ -16,6 +16,7 @@ function inverse(m: number[]): [number, number, number, number, number, number] 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private layout: Layout;
+  private layer: HTMLCanvasElement | null = null;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -36,9 +37,10 @@ export class Renderer {
   /** Render the whole card at native size. */
   draw(state: CardState): void {
     const ctx = this.ctx;
+    const { width, height } = this.canvas;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.clearRect(0, 0, width, height);
     ctx.drawImage(this.assets.plate, 0, 0);
 
     const lines = [
@@ -46,12 +48,37 @@ export class Renderer {
       ...this.layout.build(state.bottom, 'bottom'),
     ];
 
-    // text is drawn through the card transform so glyphs rasterise once, at
-    // final resolution, instead of being resampled after the warp
+    // Ink is rasterised once at final resolution into an offscreen layer, then
+    // blurred a touch and multiplied into the photo. Drawing straight onto the
+    // canvas leaves vector-sharp edges that read as a modern overlay on a
+    // soft, JPEG-compressed screencap.
+    const layer = this.textLayer(width, height, lines);
     ctx.save();
-    ctx.setTransform(...this.cardTransform());
-    this.paint(ctx, lines);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.94;
+    if ('filter' in ctx) ctx.filter = 'blur(0.45px)';
+    ctx.drawImage(layer, 0, 0);
     ctx.restore();
+  }
+
+  /** Paint the text and its edit marks into a transparent offscreen canvas. */
+  private textLayer(
+    width: number,
+    height: number,
+    lines: PlacedLine[],
+  ): HTMLCanvasElement {
+    if (!this.layer) {
+      this.layer = document.createElement('canvas');
+    }
+    const layer = this.layer;
+    layer.width = width;
+    layer.height = height;
+    const lctx = layer.getContext('2d');
+    if (!lctx) throw new Error('canvas 2d unavailable');
+
+    lctx.setTransform(...this.cardTransform());
+    this.paint(lctx, lines);
+    return layer;
   }
 
   /** Map deskewed card space onto the photo's ROI. */
