@@ -14,7 +14,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
-FONT = ROOT / ".cache" / "cand" / "EB+Garamond.ttf"
+# the shipped font itself, so regenerating needs no download cache
+FONT = ASSETS / "fonts" / "card-italic.woff2"
 OUT = ROOT / "src" / "config.ts"
 
 LINE_TEXT = {"A": "WORKS ON", "B": "CONTINGENCY", "C": "NO MONEY DOWN"}
@@ -27,8 +28,11 @@ MEASURED = {
     "B": dict(x0=52, x1=341, fit_x1=411, baseline=102, cap=29),
     "C": dict(x0=3, x1=379, fit_x1=411, baseline=187, cap=28),
 }
-# Card corners marked by hand in preview/corners.jpg, in photo pixels. The
-# bottom-right corner is torn, but no line of text reaches that far down.
+# Card corners, in photo pixels, measured once by hand off the photo. These
+# constants are now the source of truth for the drawing bounds: the derived
+# numbers live in src/config.ts under `fields`, so tweak those to adjust the
+# layout rather than re-measuring. The bottom-right corner is torn, but no line
+# of text reaches that far down.
 CORNERS = {
     "TL": (251.6, 183.0),
     "TR": (758.5, 80.5),
@@ -82,7 +86,7 @@ def word_space_ratio():
 
 
 def card_edges(m, roi):
-    """Usable card width at each band's height, from the labelled corners.
+    """Usable card width at each band's height, from the corner constants.
 
     The card is a trapezoid: its left edge leans as it descends, so the width
     available differs per band. Interpolate each edge between its two corners.

@@ -69,7 +69,6 @@ def main():
     out = cv2.resize(out, None, fx=1.6, fy=1.6, interpolation=cv2.INTER_CUBIC)
 
     # legend
-    pad = 14
     cv2.rectangle(out, (8, 8), (300, 60), (245, 245, 245), -1)
     cv2.rectangle(out, (8, 8), (300, 60), INK, 1)
     cv2.line(out, (18, 24), (48, 24), ORIGINAL, 2)
