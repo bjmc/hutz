@@ -111,7 +111,7 @@ async function main(): Promise<void> {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'money-down.png';
+    link.download = 'money-down.jpg';
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     hint.textContent = 'Saved at 960×720.';
@@ -119,7 +119,8 @@ async function main(): Promise<void> {
 
   copy.addEventListener('click', async () => {
     try {
-      const blob = await renderer.toBlob();
+      // the clipboard only accepts PNG
+      const blob = await renderer.toPngBlob();
       await navigator.clipboard.write([
         new ClipboardItem({ 'image/png': blob }),
       ]);
@@ -133,7 +134,7 @@ async function main(): Promise<void> {
     share.hidden = false;
     share.addEventListener('click', async () => {
       const blob = await renderer.toBlob();
-      const file = new File([blob], 'money-down.png', { type: 'image/png' });
+      const file = new File([blob], 'money-down.jpg', { type: 'image/jpeg' });
       if (!navigator.canShare({ files: [file] })) {
         hint.textContent = 'This browser cannot share files.';
         return;

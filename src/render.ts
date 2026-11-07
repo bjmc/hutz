@@ -110,8 +110,24 @@ export class Renderer {
     }
   }
 
-  /** Export the current card as a PNG blob at native resolution. */
-  toBlob(): Promise<Blob> {
+  /**
+   * Export the current card as a JPEG blob at native resolution.
+   *
+   * The plate came from a JPEG screencap, so a PNG export would only inflate
+   * the file without recovering anything.
+   */
+  toBlob(quality = 0.95): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      this.canvas.toBlob(
+        blob => (blob ? resolve(blob) : reject(new Error('jpeg encode failed'))),
+        'image/jpeg',
+        quality,
+      );
+    });
+  }
+
+  /** PNG is only needed for the clipboard, which will not take a JPEG. */
+  toPngBlob(): Promise<Blob> {
     return new Promise((resolve, reject) => {
       this.canvas.toBlob(
         blob => (blob ? resolve(blob) : reject(new Error('png encode failed'))),
