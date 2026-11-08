@@ -6,35 +6,36 @@ this draws is exactly where the app puts text.
 """
 from pathlib import Path
 
+import json
+
 import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "assets" / "card" / "plate.png"
+CONFIG = ROOT / "src" / "config.ts"
 OUT = ROOT / "preview" / "bounds_projected.png"
 
-# copied from src/config.ts (generated); keep in step with gen_config.py
-QUAD = [(245.29709, 178.12656), (764.42084, 72.32128),
-        (789.44867, 554.71550), (265.98930, 663.23865)]
-CARD_W, CARD_H = 530, 484
-
-LINES = {
-    "A": dict(x0=124, x1=353, baseline=173, cap=27),
-    "B": dict(x0=107, x1=391, baseline=218, cap=28),
-    "C": dict(x0=74, x1=443, baseline=304, cap=27),
-}
-FIELDS = {
-    "top": dict(center=249.0, half=142.0, min_x=14, max_x=516),
-    "bottom": dict(center=258.5, half=184.5, min_x=14, max_x=516),
-}
 FIELD_BANDS = {"top": ["A", "B"], "bottom": ["C"]}
 
 
-def homographies():
-    src = np.array(QUAD, np.float32)
-    dst = np.array([[0, 0], [CARD_W, 0], [CARD_W, CARD_H], [0, CARD_H]], np.float32)
-    fwd = cv2.getPerspectiveTransform(src, dst)     # photo -> card
-    return fwd, np.linalg.inv(fwd)                  # card -> photo
+def read_config():
+    """Pull the generated CONFIG object out of src/config.ts.
+
+    The file is `export const CONFIG: CardConfig = {...};`. Slicing from the
+    assignment (not the first `{`, which appears in the import above it) and
+    parsing as JSON keeps this tool in step with the generator.
+    """
+    text = CONFIG.read_text()
+    start = text.index("CONFIG: CardConfig =") + len("CONFIG: CardConfig =")
+    body = text[start:text.rindex("}") + 1]
+    return json.loads(body)
+
+
+def homographies(cfg):
+    """The generator stores photo -> card; drawing needs the inverse."""
+    fwd = np.array(cfg["homography"], float).reshape(3, 3)
+    return fwd, np.linalg.inv(fwd)
 
 
 def card_to_photo(hinv, pts):
@@ -62,23 +63,26 @@ def label(img, hinv, x, y, text, colour, scale=0.42):
 
 
 def main():
+    cfg = read_config()
     img = cv2.imread(str(SRC))
-    _fwd, hinv = homographies()
+    _fwd, hinv = homographies(cfg)
+    lines = {l["band"]: l for l in cfg["lines"]}
+    fields = cfg["fields"]
 
     GREEN = (60, 190, 60)
     BLUE = (230, 120, 40)
 
     # original bounds: each physical band, cap top to baseline
-    for name, d in LINES.items():
+    for name, d in lines.items():
         y0 = d["baseline"] - d["cap"]
         box(hinv, d["x0"], d["x1"], y0, d["baseline"], GREEN, img, 1)
         label(img, hinv, d["x0"], y0 - 6, f"{name} orig", GREEN)
 
     # maximum bounds: the field box grown to the card's padding
-    for field, f in FIELDS.items():
+    for field, f in fields.items():
         bands = FIELD_BANDS[field]
-        top = min(LINES[b]["baseline"] - LINES[b]["cap"] for b in bands)
-        bottom = max(LINES[b]["baseline"] for b in bands)
+        top = min(lines[b]["baseline"] - lines[b]["cap"] for b in bands)
+        bottom = max(lines[b]["baseline"] for b in bands)
         box(hinv, f["min_x"], f["max_x"], top, bottom, BLUE, img, 2)
         label(img, hinv, f["min_x"], top - 8, f"{field} max", BLUE)
 
@@ -99,7 +103,7 @@ def main():
     print(f"wrote {OUT}")
 
     # report where the boxes land, for cross-checking
-    for name, d in LINES.items():
+    for name, d in lines.items():
         q = card_to_photo(hinv, [(d["x0"], d["baseline"] - d["cap"]),
                                  (d["x1"], d["baseline"])])
         print(f"  band {name}: photo {q[0]} .. {q[1]}")

@@ -1,6 +1,7 @@
 /** One drawing placed inside a mark; a colon or semicolon is two of these. */
 export interface MarkPart {
-  uri: string;
+  /** Which traced vector to draw; resolved from assets/punct. */
+  svg: string;
   dx: number;
   dy: number;
   w: number;

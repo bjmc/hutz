@@ -1,5 +1,6 @@
 import { CONFIG } from './config';
 import { PLATE_URL } from './plate';
+import { markDataUri } from './marks';
 import { Renderer } from './render';
 import type { Assets, CardState } from './types';
 
@@ -30,7 +31,7 @@ async function loadAssets(): Promise<Assets> {
     await Promise.all(
       CONFIG.marks.map(async m => [
         m.name,
-        await Promise.all(m.parts.map(p => loadImage(p.uri))),
+        await Promise.all(m.parts.map(p => loadImage(markDataUri(p.svg)))),
       ] as const),
     ),
   );

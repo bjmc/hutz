@@ -177,13 +177,11 @@ def build_marks(_manifest):
     """
     parts = mark_parts()
 
-    def encode(part):
-        svg, dx, dy, w, h = part
-        return dict(
-            uri="data:image/svg+xml;base64," +
-                base64.b64encode(svg.encode()).decode(),
-            dx=dx, dy=dy, w=w, h=h,
-        )
+    def encode(part, name):
+        # the SVG file is named, not inlined: the app imports it, so the vector
+        # lives in assets/ only, and a reused shape is not duplicated per mark
+        _svg, dx, dy, w, h = part
+        return dict(svg=name, dx=dx, dy=dy, w=w, h=h)
 
     out = []
     for char, name in MARK_CHAR.items():
@@ -191,7 +189,7 @@ def build_marks(_manifest):
         out.append(dict(
             name=name, char=char,
             w=p[3], h=p[4], dy=p[2], cap=MEASURED[MARK_LINE[name]]["cap"],
-            pad=0.0, parts=[encode(p)],
+            pad=0.0, parts=[encode(p, name)],
         ))
 
     for char, (lower, upper) in COMPOSED.items():
@@ -215,7 +213,7 @@ def build_marks(_manifest):
             h=round(bottom - top, 1),
             dy=round(bottom, 1),
             cap=cap, pad=DOT_PAD,
-            parts=[encode(q) for q in pieces],
+            parts=[encode(q, n) for q, n in zip(pieces, (lower, upper))],
         ))
     return out
 
