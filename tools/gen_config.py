@@ -74,7 +74,6 @@ DOT_PAD = 0.26      # of cap, extra advance so a stacked mark clears the letter
 # constant so all three read as the same pen. Drawn stretched, which Canvas does
 # natively, so the taper is preserved.
 DASH_SVG = "dash"
-DASH_ASPECT = 47.2 / 23.9          # natural length : thickness of the traced stroke
 DASH_THICK = 0.52                  # of cap, matching the card's stroke weight
 DASHES = {
     "-": 0.62,                     # of cap; hyphen

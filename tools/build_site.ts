@@ -10,15 +10,11 @@ import { resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dir, '..');
 
-const buf = await Bun.file(resolve(ROOT, 'assets/card/plate.jpg')).arrayBuffer();
-const plate = `data:image/jpeg;base64,${Buffer.from(buf).toString('base64')}`;
-
 const built = await Bun.build({
   entrypoints: [resolve(ROOT, 'index.html')],
   compile: true,
   target: 'browser',
   minify: true,
-  define: { __PLATE_URL__: JSON.stringify(plate) },
 });
 
 if (!built.success) {

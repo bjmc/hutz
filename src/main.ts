@@ -1,5 +1,4 @@
 import { CONFIG } from './config';
-import { PLATE_URL } from './plate';
 import { markDataUri } from './marks';
 import { Renderer } from './render';
 import type { Assets, CardState } from './types';
@@ -26,7 +25,15 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 async function loadAssets(): Promise<Assets> {
-  const plate = await loadImage(PLATE_URL);
+  // the plate comes from the <img> in the markup, so the bundler inlines it
+  const plate = el<HTMLImageElement>('plate');
+  if (!plate.complete) {
+    await new Promise<void>((resolve, reject) => {
+      plate.addEventListener('load', () => resolve(), { once: true });
+      plate.addEventListener('error', () => reject(new Error('plate failed')),
+        { once: true });
+    });
+  }
   const marks = new Map(
     await Promise.all(
       CONFIG.marks.map(async m => [

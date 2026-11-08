@@ -17,6 +17,9 @@
     <main class="stage">
       <figure class="card">
         <canvas id="card" width="960" height="720"></canvas>
+        <!-- the plate is an img so the bundler inlines it as a data URI;
+             loading it from JS would leave it as a separate file -->
+        <img id="plate" src="./assets/card/plate.jpg" alt="" hidden />
       </figure>
 
       <form class="panel" id="panel" autocomplete="off">

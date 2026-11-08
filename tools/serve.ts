@@ -27,11 +27,6 @@ async function bundleMain(): Promise<string> {
     target: 'browser',
     format: 'esm',
     sourcemap: 'inline',
-    define: {
-      __PLATE_URL__: JSON.stringify(
-        await dataUri('assets/card/plate.jpg', 'image/jpeg'),
-      ),
-    },
   });
   if (!built.success) {
     const detail = built.logs.map(log => log.message).join('\n');
