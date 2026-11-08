@@ -40,10 +40,11 @@ CHAIKIN = 3        # corner-cutting passes that round the hand's outline
 EDGE_FEATHER = 1.2  # px the band edge fades over, hiding the cut
 BLEED = 0          # extra px the erase stays clear of the hand; GROW already
                    # carries the mask past the outline, onto plain paper
-GROW = 2           # how far the yellow grows into its drawn outline. The
-                   # outline is a thin shell: growing further starts swallowing
-                   # the printed name wherever it touches the hand, and that
-                   # name is then restored with the fingers instead of erased.
+GROW = 3           # how far the yellow grows into its drawn outline. This is
+                   # the largest value that still takes the whole stroke: at 4
+                   # the mask starts swallowing the printed name where it
+                   # touches the hand, and that name is then restored with the
+                   # fingers instead of erased.
 DARKEN = 115       # grey level below which a pixel counts as outline
 MIN_BLOB = 400     # smallest yellow blob that is hand, in photo pixels
 
