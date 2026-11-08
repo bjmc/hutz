@@ -7,6 +7,7 @@ tracking/word-space that reproduce the original line widths.
 """
 import base64
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -85,10 +86,12 @@ DASH_PAD = 0.20                    # of cap, breathing room either side
 
 # Double marks built from the dash: two parallel bars, or a cross. `gap` is the
 # clearance between the bars and `rel` their length, both fractions of cap.
-DASH_PAIRS = {
-    "=": dict(rel=0.72, gap=0.30),
-    "+": dict(rel=0.72, gap=0.30),
-}
+PAIR_REL = 0.72
+PAIR_GAP = 0.30
+# Angled marks are the same bar turned about its centre; chevrons stack two of
+# them apex to apex. Lengths are fractions of cap.
+SLASH_REL = 0.92
+CHEVRON_REL = 0.52
 
 
 def cap_ratio(ttf):
@@ -231,45 +234,63 @@ def build_marks(_manifest):
                           DASH_SVG, 0)],
         ))
 
-    # marks built from the horizontal dash bar
-    for char, spec in DASH_PAIRS.items():
-        length = spec["rel"] * cap
-        gap = spec["gap"] * cap
-        # `base` is the optical centre above the baseline; every piece's
-        # bottom is stored negated, because negative sits above the baseline
-        base = DASH_LIFT * cap
-        half = thick / 2
-        if char == "=":
-            pieces = [
-                (dash_svg, 0, round(-(base - gap / 2 - half), 1),
-                 round(length, 1), round(thick, 1), 0),
-                (dash_svg, 0, round(-(base + gap / 2 - half), 1),
-                 round(length, 1), round(thick, 1), 0),
-            ]
-        else:
-            # the upright is the same box turned 90 about its centre, so it
-            # keeps the bar's box exactly; only the drawn direction changes
-            pieces = [
-                (dash_svg, 0, round(-(base - half), 1),
-                 round(length, 1), round(thick, 1), 0),
-                (dash_svg, 0, round(-(base - half), 1),
-                 round(length, 1), round(thick, 1), 90),
-            ]
-        # a rotated part's visual extent is its box swapped
-        def ext(q):
-            w, h, rot = q[3], q[4], q[5]
-            return (h, w) if rot % 180 == 90 else (w, h)
+    # marks built from rotated copies of the horizontal dash bar
+    def extent(length, thick_, rot):
+        a = math.radians(rot)
+        return (abs(length * math.cos(a)) + abs(thick_ * math.sin(a)),
+                abs(length * math.sin(a)) + abs(thick_ * math.cos(a)))
 
-        top = min(q[2] - ext(q)[1] for q in pieces)
-        bottom = max(q[2] for q in pieces)
+    def angled(char, pieces):
+        """Assemble a mark from rotated bars, optically centred on the dash.
+
+        `pieces` are (centre_x, centre_y_above_baseline, length, thick, rot).
+        Rotation is about the box centre, so a piece's visual centre is its box
+        centre; only its extent changes.
+        """
+        spans = [extent(q[2], q[3], q[4]) for q in pieces]
+        y0 = min(q[1] - s[1] / 2 for q, s in zip(pieces, spans))
+        y1 = max(q[1] + s[1] / 2 for q, s in zip(pieces, spans))
+        lift = DASH_LIFT * cap - (y0 + y1) / 2
+        pieces = [(cx, cy + lift, *rest) for cx, cy, *rest in pieces]
+        y0 += lift
+        y1 += lift
+        spans = [extent(q[2], q[3], q[4]) for q in pieces]
+        x0 = min(q[0] - s[0] / 2 for q, s in zip(pieces, spans))
+        x1 = max(q[0] + s[0] / 2 for q, s in zip(pieces, spans))
+        parts = []
+        for (cx, cy, length, thick_, rot), span in zip(pieces, spans):
+            # dx and bottom position the pre-rotation box, whose centre is the
+            # visual centre once the canvas rotates it in place
+            parts.append(encode(
+                (dash_svg, round(cx - x0 - length / 2, 1),
+                 round(thick_ / 2 - cy, 1), round(length, 1),
+                 round(thick_, 1)), DASH_SVG, rot))
         out.append(dict(
             name=char, char=char,
-            w=round(max(ext(q)[0] for q in pieces), 1),
-            h=round(bottom - top, 1),
-            bottom=round(bottom, 1),
-            cap=cap, pad=DASH_PAD,
-            parts=[encode(q[:5], DASH_SVG, q[5]) for q in pieces],
+            w=round(x1 - x0, 1), h=round(y1 - y0, 1), bottom=round(-y0, 1),
+            cap=cap, pad=DASH_PAD, parts=parts,
         ))
+
+    base = DASH_LIFT * cap
+    bar = PAIR_REL * cap
+    pair_gap = PAIR_GAP * cap
+
+    angled("=", [(bar / 2, base - pair_gap / 2, bar, thick, 0),
+                 (bar / 2, base + pair_gap / 2, bar, thick, 0)])
+    angled("+", [(bar / 2, base, bar, thick, 0),
+                 (bar / 2, base, bar, thick, 90)])
+
+    slash = SLASH_REL * cap
+    angled("/", [(0, base, slash, thick, -45)])
+    angled("\\", [(0, base, slash, thick, 45)])
+
+    # chevrons: two strokes meeting at an apex, mirrored for each direction
+    chev = CHEVRON_REL * cap
+    d = chev / math.sqrt(2)
+    angled("<", [(d / 2, base + d / 2, chev, thick, -45),
+                 (d / 2, base - d / 2, chev, thick, 45)])
+    angled(">", [(-d / 2, base + d / 2, chev, thick, 45),
+                 (-d / 2, base - d / 2, chev, thick, -45)])
 
     for char, (lower, upper) in COMPOSED.items():
         cap = MEASURED["C"]["cap"]

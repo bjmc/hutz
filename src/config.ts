@@ -225,7 +225,7 @@ export const CONFIG: CardConfig = {
       "parts": [
         {
           "svg": "dash",
-          "dx": 0,
+          "dx": 0.0,
           "bottom": -4.1,
           "w": 19.4,
           "h": 5.4,
@@ -233,7 +233,7 @@ export const CONFIG: CardConfig = {
         },
         {
           "svg": "dash",
-          "dx": 0,
+          "dx": 0.0,
           "bottom": -12.2,
           "w": 19.4,
           "h": 5.4,
@@ -246,13 +246,13 @@ export const CONFIG: CardConfig = {
       "char": "+",
       "w": 19.4,
       "h": 19.4,
-      "bottom": -8.1,
+      "bottom": -1.1,
       "cap": 27,
       "pad": 0.2,
       "parts": [
         {
           "svg": "dash",
-          "dx": 0,
+          "dx": 0.0,
           "bottom": -8.1,
           "w": 19.4,
           "h": 5.4,
@@ -260,11 +260,103 @@ export const CONFIG: CardConfig = {
         },
         {
           "svg": "dash",
-          "dx": 0,
+          "dx": 0.0,
           "bottom": -8.1,
           "w": 19.4,
           "h": 5.4,
           "rot": 90
+        }
+      ]
+    },
+    {
+      "name": "/",
+      "char": "/",
+      "w": 21.4,
+      "h": 21.4,
+      "bottom": -0.1,
+      "cap": 27,
+      "pad": 0.2,
+      "parts": [
+        {
+          "svg": "dash",
+          "dx": -1.7,
+          "bottom": -8.1,
+          "w": 24.8,
+          "h": 5.4,
+          "rot": -45
+        }
+      ]
+    },
+    {
+      "name": "\\",
+      "char": "\\",
+      "w": 21.4,
+      "h": 21.4,
+      "bottom": -0.1,
+      "cap": 27,
+      "pad": 0.2,
+      "parts": [
+        {
+          "svg": "dash",
+          "dx": -1.7,
+          "bottom": -8.1,
+          "w": 24.8,
+          "h": 5.4,
+          "rot": 45
+        }
+      ]
+    },
+    {
+      "name": "<",
+      "char": "<",
+      "w": 13.7,
+      "h": 23.7,
+      "bottom": 1.0,
+      "cap": 27,
+      "pad": 0.2,
+      "parts": [
+        {
+          "svg": "dash",
+          "dx": -0.1,
+          "bottom": -13.1,
+          "w": 14.0,
+          "h": 5.4,
+          "rot": -45
+        },
+        {
+          "svg": "dash",
+          "dx": -0.1,
+          "bottom": -3.1,
+          "w": 14.0,
+          "h": 5.4,
+          "rot": 45
+        }
+      ]
+    },
+    {
+      "name": ">",
+      "char": ">",
+      "w": 13.7,
+      "h": 23.7,
+      "bottom": 1.0,
+      "cap": 27,
+      "pad": 0.2,
+      "parts": [
+        {
+          "svg": "dash",
+          "dx": -0.1,
+          "bottom": -13.1,
+          "w": 14.0,
+          "h": 5.4,
+          "rot": 45
+        },
+        {
+          "svg": "dash",
+          "dx": -0.1,
+          "bottom": -3.1,
+          "w": 14.0,
+          "h": 5.4,
+          "rot": -45
         }
       ]
     },
