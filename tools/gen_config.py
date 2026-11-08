@@ -58,6 +58,16 @@ MARK_RIGHT = 411.0
 # which measured line each traced mark came from
 MARK_LINE = {"qmark": "B", "bang": "C", "comma": "C", "period": "C"}
 MARK_CHAR = {"?": "qmark", "!": "bang", ",": "comma", ".": "period"}
+# The card has no colon or semicolon, so these are stacked from the shapes it
+# does have. A period's dot traces narrower than a comma's, so it is scaled to
+# match; the comma stays at its traced size.
+COMPOSED = {
+    ":": ("period", "period"),
+    ";": ("comma", "period"),
+}
+PERIOD_DOT_SCALE = 1.12
+DOT_GAP = 0.02      # of cap, clearance between the stacked marks
+DOT_PAD = 0.26      # of cap, extra advance so a stacked mark clears the letter
 
 
 def cap_ratio(ttf):
@@ -137,33 +147,75 @@ MARK_BOX = {
 }
 # the period is not used by the default meme, so it is scaled from the bang
 PERIOD_FROM_BANG = dict(w=18 / 34, h=17 / 65)
+PERIOD_LIFT = 5   # px above the baseline for a period's bottom edge
 
 
-def build_marks(_manifest):
-    """Place each traced mark against the baseline of its line.
-
-    The vector ships inline as a data URI so the app has nothing to fetch.
-    """
-    out = []
-    for name, char in ((n, c) for c, n in MARK_CHAR.items()):
-        band = MARK_LINE[name]
-        line = MEASURED[band]
+def mark_parts():
+    """Each traced mark as (svg, dx, dy, w, h), dy being its bottom offset."""
+    parts = {}
+    for name in MARK_LINE:
+        line = MEASURED[MARK_LINE[name]]
         svg = (ASSETS / "punct" / f"{name}.svg").read_text().strip()
         box = MARK_BOX.get(name)
         if box is None:
+            # the period is not in the default meme; scale it from the bang
             bang = MARK_BOX["bang"]
-            box = dict(
-                w=int(round(bang["w"] * PERIOD_FROM_BANG["w"] / (29 / 34))),
-                h=int(round(bang["h"] * PERIOD_FROM_BANG["h"] / (63 / 65))),
-            )
-            box["y"] = line["baseline"] - box["h"] + 2
+            w = round(bang["w"] * PERIOD_FROM_BANG["w"] / (29 / 34))
+            h = round(bang["h"] * PERIOD_FROM_BANG["h"] / (63 / 65))
+            # sit just above the baseline, as a period does
+            y = line["baseline"] - h + PERIOD_LIFT
+            box = dict(x=0, y=y, w=w, h=h)
         dy = (box["y"] + box["h"]) - line["baseline"]
-        out.append(dict(
-            name=name, char=char,
-            w=box["w"], h=box["h"], dy=dy,
-            cap=line["cap"],
+        parts[name] = (svg, 0, dy, box["w"], box["h"])
+    return parts
+
+
+def build_marks(_manifest):
+    """Place each mark against the baseline of its line.
+
+    The vector ships inline as a data URI so the app has nothing to fetch.
+    """
+    parts = mark_parts()
+
+    def encode(part):
+        svg, dx, dy, w, h = part
+        return dict(
             uri="data:image/svg+xml;base64," +
                 base64.b64encode(svg.encode()).decode(),
+            dx=dx, dy=dy, w=w, h=h,
+        )
+
+    out = []
+    for char, name in MARK_CHAR.items():
+        p = parts[name]
+        out.append(dict(
+            name=name, char=char,
+            w=p[3], h=p[4], dy=p[2], cap=MEASURED[MARK_LINE[name]]["cap"],
+            pad=0.0, parts=[encode(p)],
+        ))
+
+    for char, (lower, upper) in COMPOSED.items():
+        cap = MEASURED["C"]["cap"]
+        low_svg, low_dx, low_dy, low_w, low_h = parts[lower]
+        up_svg, up_dx, up_dy, up_w, up_h = parts[upper]
+        if upper == "period":
+            s = PERIOD_DOT_SCALE
+            up_w, up_h, up_dy = up_w * s, up_h * s, up_dy * s
+        # lift the upper mark so its bottom clears the lower mark's top
+        up_dy -= low_h + DOT_GAP * cap
+        pieces = [
+            (low_svg, low_dx, round(low_dy, 1), round(low_w, 1), round(low_h, 1)),
+            (up_svg, up_dx, round(up_dy, 1), round(up_w, 1), round(up_h, 1)),
+        ]
+        top = min(q[2] - q[4] for q in pieces)
+        bottom = max(q[2] for q in pieces)
+        out.append(dict(
+            name=char, char=char,
+            w=max(q[3] for q in pieces),
+            h=round(bottom - top, 1),
+            dy=round(bottom, 1),
+            cap=cap, pad=DOT_PAD,
+            parts=[encode(q) for q in pieces],
         ))
     return out
 

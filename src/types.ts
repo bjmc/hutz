@@ -1,3 +1,12 @@
+/** One drawing placed inside a mark; a colon or semicolon is two of these. */
+export interface MarkPart {
+  uri: string;
+  dx: number;
+  dy: number;
+  w: number;
+  h: number;
+}
+
 export interface Mark {
   name: string;
   char: string;
@@ -5,7 +14,9 @@ export interface Mark {
   h: number;
   dy: number;
   cap: number;
-  uri: string;
+  /** Extra advance as a fraction of cap, so a tall mark clears the letter. */
+  pad: number;
+  parts: MarkPart[];
 }
 
 export interface LineSlot {
@@ -54,5 +65,5 @@ export interface CardState {
 
 export interface Assets {
   plate: HTMLImageElement;
-  marks: Map<string, HTMLImageElement>;
+  marks: Map<string, HTMLImageElement[]>;
 }

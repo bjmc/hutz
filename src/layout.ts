@@ -110,7 +110,7 @@ export class Layout {
         out.push({
           kind: 'mark',
           mark,
-          advance: w + MARK_GAP * cap,
+          advance: w + (MARK_GAP + mark.pad) * cap,
           w,
           h: mark.h * scale,
           dy: mark.dy * scale,

@@ -28,7 +28,10 @@ async function loadAssets(): Promise<Assets> {
   const plate = await loadImage(PLATE_URL);
   const marks = new Map(
     await Promise.all(
-      CONFIG.marks.map(async m => [m.name, await loadImage(m.uri)] as const),
+      CONFIG.marks.map(async m => [
+        m.name,
+        await Promise.all(m.parts.map(p => loadImage(p.uri))),
+      ] as const),
     ),
   );
   return { plate, marks };

@@ -129,12 +129,27 @@ export class Renderer {
         ctx.restore();
       }
       for (const placed of line.marks) {
-        const img = this.assets.marks.get(placed.mark.name);
-        if (!img) continue;
-        ctx.save();
-        ctx.setTransform(...this.localTransform(placed.x, placed.top));
-        ctx.drawImage(img, placed.x, placed.top, placed.w, placed.h);
-        ctx.restore();
+        const imgs = this.assets.marks.get(placed.mark.name);
+        if (!imgs) continue;
+        const scale = placed.w / placed.mark.w;
+        for (let i = 0; i < placed.mark.parts.length; i++) {
+          const part = placed.mark.parts[i]!;
+          const img = imgs[i];
+          if (!img) continue;
+          // each part is positioned from the baseline by its own height; using
+          // the composed mark's total height would push the upper dot upward
+          const py = line.baseline + (part.dy - part.h) * scale;
+          ctx.save();
+          ctx.setTransform(...this.localTransform(placed.x, py));
+          ctx.drawImage(
+            img,
+            placed.x + part.dx * scale,
+            py,
+            part.w * scale,
+            part.h * scale,
+          );
+          ctx.restore();
+        }
       }
     }
   }
