@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!--
-      Typeface: EB Garamond Bold.
+      Typeface: EB Garamond
       Copyright (c) 2017, The EB Garamond Project Authors, licensed under the
       SIL Open Font License 1.1. Licence text:
       https://openfontlicense.org
@@ -20,9 +20,14 @@
         <!-- the plate is an img so the bundler inlines it as a data URI;
              loading it from JS would leave it as a separate file -->
         <img id="plate" src="./assets/card/plate.jpg" alt="" hidden />
+        <img id="fingers" src="./assets/card/fingers.png" alt="" hidden />
       </figure>
 
       <form class="panel" id="panel" autocomplete="off">
+        <label class="field">
+          <input id="header" type="text" spellcheck="false" value="LIONEL HUTZ" />
+        </label>
+
         <label class="field">
           <input id="top" type="text" spellcheck="false" value="WORKS ON CONTINGENCY?" />
         </label>

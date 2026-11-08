@@ -13,7 +13,11 @@ default:
 build: assets site
 
 # Run the whole asset pipeline in order
-assets: plate header config
+assets: font plate header config
+
+# Stage 0: vendor the card typeface as a static subsetted woff2
+font:
+    {{python}} tools/vendor_font.py
 
 # Stage 1: trace punctuation and remove the handwriting from the source photo
 plate:

@@ -26,7 +26,7 @@ export interface Mark {
 
 export interface LineSlot {
   band: string;
-  field: 'top' | 'bottom';
+  field: 'header' | 'top' | 'bottom';
   x0: number;
   x1: number;
   baseline: number;
@@ -54,21 +54,25 @@ export interface CardConfig {
   ink: { colour: [number, number, number] };
   font: {
     family: string;
+    weight: number;
     cap_ratio: number;
     advance_ratio: number;
     word_space: number;
   };
   lines: LineSlot[];
-  fields: { top: FieldBounds; bottom: FieldBounds };
+  fields: { header: FieldBounds; top: FieldBounds; bottom: FieldBounds };
   marks: Mark[];
 }
 
 export interface CardState {
+  header: string;
   top: string;
   bottom: string;
 }
 
 export interface Assets {
   plate: HTMLImageElement;
+  /** Matte of the cartoon hand, drawn over the header so it occludes it. */
+  fingers: HTMLImageElement;
   marks: Map<string, HTMLImageElement[]>;
 }

@@ -36,11 +36,20 @@ export const CONFIG: CardConfig = {
   },
   "font": {
     "family": "CardFont",
-    "cap_ratio": 0.66,
-    "advance_ratio": 0.91699,
+    "weight": 500,
+    "cap_ratio": 0.6625,
+    "advance_ratio": 0.90699,
     "word_space": 0.83
   },
   "lines": [
+    {
+      "band": "H",
+      "field": "header",
+      "x0": 53,
+      "x1": 470,
+      "baseline": 79,
+      "cap": 41
+    },
     {
       "band": "A",
       "field": "top",
@@ -76,6 +85,12 @@ export const CONFIG: CardConfig = {
     "bottom": {
       "center": 258.5,
       "half": 184.5,
+      "min_x": 14,
+      "max_x": 516
+    },
+    "header": {
+      "center": 261.5,
+      "half": 208.5,
       "min_x": 14,
       "max_x": 516
     }

@@ -202,9 +202,15 @@ def main():
 
     cv2.imwrite(str(CARD / "plate.jpg"), clean,
                 [cv2.IMWRITE_JPEG_QUALITY, 94])
-    matte = np.zeros((ph, pw), np.uint8)
-    matte[hand_photo > 0] = 255
-    cv2.imwrite(str(CARD / "fingers.png"), matte,
+    # Full-size alpha cut-out of the hand, so the app can lay it straight over
+    # the header with `drawImage` and no positioning maths. RGB is kept only
+    # inside the hand and zeroed elsewhere, which costs nothing visually and
+    # keeps the PNG small: the transparent area is one long run of zeros.
+    fingers = np.zeros((ph, pw, 4), np.uint8)
+    keep = hand_photo > 0
+    fingers[keep, :3] = plate[keep]
+    fingers[keep, 3] = 255
+    cv2.imwrite(str(CARD / "fingers.png"), fingers,
                 [cv2.IMWRITE_PNG_COMPRESSION, 9])
 
     def crop(img, scale=2, rows=(20, 100), cols=(20, 500)):

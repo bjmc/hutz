@@ -20,7 +20,7 @@ export class Renderer {
   }
 
   /** Longest prefix of `text` that still fits its field. */
-  clamp(text: string, field: 'top' | 'bottom'): string {
+  clamp(text: string, field: 'header' | 'top' | 'bottom'): string {
     return this.layout.clamp(text, field);
   }
 
@@ -34,6 +34,7 @@ export class Renderer {
     ctx.drawImage(this.assets.plate, 0, 0);
 
     const lines = [
+      ...this.layout.build(state.header, 'header'),
       ...this.layout.build(state.top, 'top'),
       ...this.layout.build(state.bottom, 'bottom'),
     ];
@@ -49,6 +50,11 @@ export class Renderer {
     if ('filter' in ctx) ctx.filter = 'blur(0.45px)';
     ctx.drawImage(layer, 0, 0);
     ctx.restore();
+
+    // The plate has no printed name, so the cartoon hand must be laid back over
+    // the header. Its matte is the photograph's own hand, which is why the
+    // fingers keep their drawn outline rather than being inpainted around.
+    if (state.header.trim()) ctx.drawImage(this.assets.fingers, 0, 0);
   }
 
   /** Paint the text and its edit marks into a transparent offscreen canvas. */
@@ -121,7 +127,7 @@ export class Renderer {
     ctx.fillStyle = ink;
 
     for (const line of lines) {
-      ctx.font = `700 ${line.size}px ${family}`;
+      ctx.font = `${this.cfg.font.weight} ${line.size}px ${family}`;
       for (const glyph of line.glyphs) {
         ctx.save();
         ctx.setTransform(...this.localTransform(glyph.x, line.baseline));

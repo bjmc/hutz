@@ -17,6 +17,9 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
 # the shipped font itself, so regenerating needs no download cache
 FONT = ASSETS / "fonts" / "card-font.woff2"
+# the weight `tools/vendor_font.py` instantiates the variable font at; the app
+# asks for the same one so the browser picks the face we measured
+FONT_WEIGHT = 500
 OUT = ROOT / "src" / "config.ts"
 
 LINE_TEXT = {"A": "WORKS ON", "B": "CONTINGENCY", "C": "NO MONEY DOWN"}
@@ -41,6 +44,11 @@ MEASURED = {
     "B": dict(x0=107, x1=391, baseline=218, cap=28),
     "C": dict(x0=74, x1=443, baseline=304, cap=27),
 }
+# The printed name at the top of the card, in the same card space. It is set
+# larger than the body text: ink runs x 53..470, y 36..79, so the baseline is 79
+# and the cap 41. Bounds come from the ink, not the card edge, because the
+# whole point of the field is to replace a line that was already typeset.
+MEASURED_HEADER = dict(x0=53, x1=470, baseline=79, cap=41)
 # Card corners, in photo pixels, measured once by hand off the photo. These
 # constants are now the source of truth for the drawing bounds: the derived
 # numbers live in src/config.ts under `fields`, so tweak those to adjust the
@@ -160,6 +168,19 @@ def field_bounds(edges, field_of):
             max_x=round(max(edges[b][1] for b in bands), 1),
         )
     return out
+
+
+def header_bounds(edge):
+    """The box the header is typeset in: one line, spanning the name's own width.
+
+    Unlike the body, the header never wraps -- a name is short -- so the box is
+    the printed name's extent and it may grow to the card edges.
+    """
+    left = MEASURED_HEADER["x0"]
+    right = MEASURED_HEADER["x1"]
+    return dict(center=round((left + right) / 2, 1),
+                half=round((right - left) / 2, 1),
+                min_x=round(edge[0], 1), max_x=round(edge[1], 1))
 
 
 # Mark boxes measured in the warped card plane, where the baselines live.
@@ -357,9 +378,12 @@ def main():
     lines = [dict(band=b, field=next(l["field"] for l in manifest["lines"]
                                      if l["band"] == b), **MEASURED[b])
              for b in "ABC"]
+    # the header is one unwrapped line above the body, with its own size
+    lines.insert(0, dict(band="H", field="header", **MEASURED_HEADER))
     edges = card_edges()
     fields = field_bounds(edges, {b: next(l["field"] for l in manifest["lines"]
                                            if l["band"] == b) for b in "ABC"})
+    fields["header"] = header_bounds(edges["A"])
     mark_list = build_marks(manifest)
 
     # the full 3x3, row-major; render.ts maps points through it in JS
@@ -373,6 +397,7 @@ def main():
         ink={"colour": ink_colour()},
         font=dict(
             family="CardFont",
+            weight=FONT_WEIGHT,
             cap_ratio=round(cap_ratio(FONT), 5),
             advance_ratio=round(advance_ratio(FONT), 5),
             word_space=word_space_ratio(),

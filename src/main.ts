@@ -4,6 +4,7 @@ import { Renderer } from './render';
 import type { Assets, CardState } from './types';
 
 const DEFAULTS: CardState = {
+  header: 'LIONEL HUTZ',
   top: 'WORKS ON CONTINGENCY?',
   bottom: 'NO, MONEY DOWN!',
 };
@@ -34,6 +35,8 @@ async function loadAssets(): Promise<Assets> {
         { once: true });
     });
   }
+  // the finger cut-out comes from <img> too, for the same reason
+  const fingers = el<HTMLImageElement>('fingers');
   const marks = new Map(
     await Promise.all(
       CONFIG.marks.map(async m => [
@@ -42,26 +45,36 @@ async function loadAssets(): Promise<Assets> {
       ] as const),
     ),
   );
-  return { plate, marks };
+  return { plate, fingers, marks };
 }
 
 /** Encode state into the URL fragment so a link reproduces the meme. */
 function writeHash(state: CardState): void {
-  const params = new URLSearchParams({ t: state.top, b: state.bottom });
+  const params = new URLSearchParams({
+    h: state.header,
+    t: state.top,
+    b: state.bottom,
+  });
   history.replaceState(null, '', `#${params}`);
 }
 
 function readHash(): CardState {
   if (!location.hash.length) return DEFAULTS;
   const params = new URLSearchParams(location.hash.slice(1));
+  const header = params.get('h');
   const top = params.get('t');
   const bottom = params.get('b');
-  if (top === null && bottom === null) return DEFAULTS;
-  return { top: top ?? '', bottom: bottom ?? '' };
+  if (header === null && top === null && bottom === null) return DEFAULTS;
+  return {
+    header: header ?? '',
+    top: top ?? '',
+    bottom: bottom ?? '',
+  };
 }
 
 async function main(): Promise<void> {
   const canvas = el<HTMLCanvasElement>('card');
+  const headerInput = el<HTMLInputElement>('header');
   const topInput = el<HTMLInputElement>('top');
   const bottomInput = el<HTMLInputElement>('bottom');
   const hint = el<HTMLParagraphElement>('hint');
@@ -69,19 +82,23 @@ async function main(): Promise<void> {
   const copy = el<HTMLButtonElement>('copy');
   const share = el<HTMLButtonElement>('share');
 
-  await document.fonts.load(`700 16px ${CONFIG.font.family}`);
+  await document.fonts.load(
+    `${CONFIG.font.weight} 16px ${CONFIG.font.family}`,
+  );
   await document.fonts.ready;
 
   const assets = await loadAssets();
   const renderer = new Renderer(canvas, CONFIG, assets);
 
-  // Both fields are clamped to what the card can hold, so text never shrinks
+  // Every field is clamped to what the card can hold, so text never shrinks
   // and never spills off the edge.
   const initial = readHash();
   const state: CardState = {
+    header: renderer.clamp(initial.header, 'header'),
     top: renderer.clamp(initial.top, 'top'),
     bottom: renderer.clamp(initial.bottom, 'bottom'),
   };
+  headerInput.value = state.header;
   topInput.value = state.top;
   bottomInput.value = state.bottom;
 
@@ -90,7 +107,10 @@ async function main(): Promise<void> {
     writeHash(state);
   };
 
-  const sync = (field: 'top' | 'bottom', input: HTMLInputElement): void => {
+  const sync = (
+    field: 'header' | 'top' | 'bottom',
+    input: HTMLInputElement,
+  ): void => {
     const raw = input.value;
     const upper = raw.toUpperCase().replace(/\s+/g, ' ');
     const clamped = renderer.clamp(upper, field);
@@ -116,6 +136,7 @@ async function main(): Promise<void> {
 
   topInput.addEventListener('input', () => sync('top', topInput));
   bottomInput.addEventListener('input', () => sync('bottom', bottomInput));
+  headerInput.addEventListener('input', () => sync('header', headerInput));
 
   download.addEventListener('click', async () => {
     const blob = await renderer.toBlob();
