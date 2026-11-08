@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
 # the shipped font itself, so regenerating needs no download cache
-FONT = ASSETS / "fonts" / "card-italic.woff2"
+FONT = ASSETS / "fonts" / "card-font.woff2"
 OUT = ROOT / "src" / "config.ts"
 
 LINE_TEXT = {"A": "WORKS ON", "B": "CONTINGENCY", "C": "NO MONEY DOWN"}
@@ -272,7 +272,7 @@ def main():
         homography=homography,
         ink={"colour": ink_colour()},
         font=dict(
-            family="CardItalic",
+            family="CardFont",
             cap_ratio=round(cap_ratio(FONT), 5),
             advance_ratio=round(advance_ratio(FONT), 5),
             word_space=word_space_ratio(),

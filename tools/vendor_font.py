@@ -10,7 +10,7 @@ from fontTools.ttLib import TTFont
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / ".cache" / "fonts" / "LiberationMono-Italic.ttf"
-OUT = ROOT / "assets" / "fonts" / "card-italic.woff2"
+OUT = ROOT / "assets" / "fonts" / "card-font.woff2"
 
 
 def main():
