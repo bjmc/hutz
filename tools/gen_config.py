@@ -69,6 +69,21 @@ PERIOD_DOT_SCALE = 1.12
 DOT_GAP = 0.02      # of cap, clearance between the stacked marks
 DOT_PAD = 0.26      # of cap, extra advance so a stacked mark clears the letter
 
+# The dash is the bang's stroke, dot removed and rotated flat (tools/make_dash.py).
+# Only its length varies between hyphen and en/em dash; the thickness is held
+# constant so all three read as the same pen. Drawn stretched, which Canvas does
+# natively, so the taper is preserved.
+DASH_SVG = "dash"
+DASH_ASPECT = 47.2 / 23.9          # natural length : thickness of the traced stroke
+DASH_THICK = 0.52                  # of cap, matching the card's stroke weight
+DASHES = {
+    "-": 0.62,                     # of cap; hyphen
+    "–": 0.95,                # en dash
+    "—": 1.30,                # em dash
+}
+DASH_LIFT = 0.40                   # of cap, centre above the baseline
+DASH_PAD = 0.20                    # of cap, breathing room either side
+
 
 def cap_ratio(ttf):
     """Cap height as a fraction of em, straight from the font's own metrics."""
@@ -192,6 +207,24 @@ def build_marks(_manifest):
             pad=0.0, parts=[encode(p, name)],
         ))
 
+    # dashes: one traced stroke, three lengths, one thickness
+    cap = MEASURED["C"]["cap"]
+    dash_svg = (ASSETS / "punct" / f"{DASH_SVG}.svg").read_text().strip()
+    thick = DASH_THICK * cap
+    for char, rel in DASHES.items():
+        length = rel * cap
+        centre = DASH_LIFT * cap
+        # top edge of the box, and the bottom offset the mark schema stores
+        h = thick
+        dy = centre - h / 2
+        out.append(dict(
+            name=char, char=char,
+            w=round(length, 1), h=round(h, 1), dy=round(dy, 1),
+            cap=cap, pad=DASH_PAD,
+            parts=[encode((dash_svg, 0, round(dy, 1), round(length, 1), round(h, 1)),
+                          DASH_SVG)],
+        ))
+
     for char, (lower, upper) in COMPOSED.items():
         cap = MEASURED["C"]["cap"]
         low_svg, low_dx, low_dy, low_w, low_h = parts[lower]
@@ -296,7 +329,7 @@ def main():
               f"x {d['x0']}..{d['x1']}")
     for m in mark_list:
         print(f"  {m['char']} {m['name']:7s} {m['w']}x{m['h']} "
-              f"dy {m['dy']:+d} at cap {m['cap']}")
+              f"dy {m['dy']:+} at cap {m['cap']}")
 
 
 if __name__ == "__main__":
