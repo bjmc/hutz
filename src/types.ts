@@ -13,7 +13,6 @@ export interface LineSlot {
   field: 'top' | 'bottom';
   x0: number;
   x1: number;
-  fit_x1: number;
   baseline: number;
   cap: number;
 }
@@ -32,7 +31,10 @@ export interface FieldBounds {
 export interface CardConfig {
   source: [number, number];
   roi: { x: number; y: number; w: number; h: number };
-  deskew: number[];
+  /** Size of the rectangle the card quad is mapped onto. */
+  card: [number, number];
+  /** 3x3 row-major homography, photo pixels -> card space. */
+  homography: number[];
   ink: { colour: [number, number, number] };
   font: {
     family: string;

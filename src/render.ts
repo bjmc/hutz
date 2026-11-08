@@ -2,21 +2,11 @@ import type { Assets, CardConfig, CardState } from './types';
 import type { PlacedLine } from './layout';
 import { Layout } from './layout';
 
-function inverse(m: number[]): [number, number, number, number, number, number] {
-  const [a, b, c, d, e, f] = m as [number, number, number, number, number, number];
-  const det = a * d - b * c;
-  return [
-    d / det, -b / det,
-    -c / det, a / det,
-    (c * f - d * e) / det,
-    (b * e - a * f) / det,
-  ];
-}
-
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private layout: Layout;
   private layer: HTMLCanvasElement | null = null;
+  private inv: number[] | null = null;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -76,17 +66,61 @@ export class Renderer {
     const lctx = layer.getContext('2d');
     if (!lctx) throw new Error('canvas 2d unavailable');
 
-    lctx.setTransform(...this.cardTransform());
     this.paint(lctx, lines);
     return layer;
   }
 
-  /** Map deskewed card space onto the photo's ROI. */
-  private cardTransform(): [number, number, number, number, number, number] {
-    const [a, b, c, d, e, f] = inverse(this.cfg.deskew);
-    const { x, y } = this.cfg.roi;
-    // undo the deskew, then shift the card back to its place in the photo
-    return [a, b, c, d, e + x, f + y];
+  /** Card space -> photo, i.e. the inverse of the configured homography. */
+  private inverse(): number[] {
+    if (this.inv) return this.inv;
+    const [a, b, c, d, e, f, g, h, i] = this.cfg.homography as [
+      number, number, number, number, number, number, number, number, number,
+    ];
+    const A = e * i - f * h;
+    const B = -(d * i - f * g);
+    const C = d * h - e * g;
+    const det = a * A + b * B + c * C;
+    this.inv = [
+      A / det, -(b * i - c * h) / det, (b * f - c * e) / det,
+      B / det, (a * i - c * g) / det, -(a * f - c * d) / det,
+      C / det, -(a * h - b * g) / det, (a * e - b * d) / det,
+    ];
+    return this.inv;
+  }
+
+  /** Map a card-space point onto the photo. */
+  private toPhoto(x: number, y: number): [number, number] {
+    const h = this.inverse();
+    const w = h[6]! * x + h[7]! * y + h[8]!;
+    return [
+      (h[0]! * x + h[1]! * y + h[2]!) / w,
+      (h[3]! * x + h[4]! * y + h[5]!) / w,
+    ];
+  }
+
+  /**
+   * Local affine at a card-space point, as a canvas transform.
+   *
+   * Canvas2D flattens projective matrices (m14 is dropped), so the homography
+   * cannot be set directly. Over one glyph the mapping is near-affine, so the
+   * exact Jacobian is used instead: the pen lands on the mapped point and the
+   * glyph is sheared by however the projection scales it locally.
+   */
+  private localTransform(
+    x: number,
+    y: number,
+  ): [number, number, number, number, number, number] {
+    const e = 0.5;
+    const [x1, y1] = this.toPhoto(x + e, y);
+    const [x0, y0] = this.toPhoto(x - e, y);
+    const [x2, y2] = this.toPhoto(x, y + e);
+    const [x3, y3] = this.toPhoto(x, y - e);
+    const a = (x1 - x0) / (2 * e);
+    const b = (y1 - y0) / (2 * e);
+    const c = (x2 - x3) / (2 * e);
+    const d = (y2 - y3) / (2 * e);
+    const [px, py] = this.toPhoto(x, y);
+    return [a, b, c, d, px - a * x - c * y, py - b * x - d * y];
   }
 
   private paint(ctx: CanvasRenderingContext2D, lines: PlacedLine[]): void {
@@ -100,12 +134,18 @@ export class Renderer {
     for (const line of lines) {
       ctx.font = `italic 700 ${line.size}px ${family}`;
       for (const glyph of line.glyphs) {
+        ctx.save();
+        ctx.setTransform(...this.localTransform(glyph.x, line.baseline));
         ctx.fillText(glyph.ch, glyph.x, line.baseline);
+        ctx.restore();
       }
       for (const placed of line.marks) {
         const img = this.assets.marks.get(placed.mark.name);
         if (!img) continue;
+        ctx.save();
+        ctx.setTransform(...this.localTransform(placed.x, placed.top));
         ctx.drawImage(img, placed.x, placed.top, placed.w, placed.h);
+        ctx.restore();
       }
     }
   }

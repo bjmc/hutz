@@ -23,10 +23,22 @@ LINE_TEXT = {"A": "WORKS ON", "B": "CONTINGENCY", "C": "NO MONEY DOWN"}
 # extent: the red marks are appended after the text and hang past it, so
 # including them here would over-spread the justification. fit_x1 is the card's
 # usable right edge, which is the limit a mark may run out to.
+# The card is photographed with perspective, so the correction is a homography
+# fitted to the four printed border rules (see tools/fit_borders.py). A pure
+# rotation cannot square the card: it levels the top/bottom rules but leaves the
+# sides sheared, which makes upright lettering measure as italic.
+QUAD = {
+    "TL": (245.29709, 178.12656),
+    "TR": (764.42084, 72.32128),
+    "BR": (789.44867, 554.71550),
+    "BL": (265.98930, 663.23865),
+}
+CARD_W, CARD_H = 530, 484     # the rectangle the quad maps onto
+
 MEASURED = {
-    "A": dict(x0=78, x1=310, fit_x1=411, baseline=59, cap=30),
-    "B": dict(x0=52, x1=341, fit_x1=411, baseline=102, cap=29),
-    "C": dict(x0=3, x1=379, fit_x1=411, baseline=187, cap=28),
+    "A": dict(x0=124, x1=353, baseline=173, cap=27),
+    "B": dict(x0=107, x1=391, baseline=218, cap=28),
+    "C": dict(x0=74, x1=443, baseline=304, cap=27),
 }
 # Card corners, in photo pixels, measured once by hand off the photo. These
 # constants are now the source of truth for the drawing bounds: the derived
@@ -85,30 +97,10 @@ def word_space_ratio():
     return 0.83
 
 
-def card_edges(m, roi):
-    """Usable card width at each band's height, from the corner constants.
-
-    The card is a trapezoid: its left edge leans as it descends, so the width
-    available differs per band. Interpolate each edge between its two corners.
-    """
-    def to_card(px, py):
-        v = m @ np.array([px - roi["x"], py - roi["y"], 1.0])
-        return float(v[0]), float(v[1])
-
-    c = {k: to_card(*p) for k, p in CORNERS.items()}
-
-    def edge(top, bottom, y):
-        (x0, y0), (x1, y1) = c[top], c[bottom]
-        t = (y - y0) / (y1 - y0)
-        return x0 + t * (x1 - x0)
-
-    out = {}
-    for band, d in MEASURED.items():
-        y = d["baseline"] - d["cap"] / 2
-        left = edge("TL", "BL", y) + CARD_PAD
-        right = edge("TR", "BR", y) - CARD_PAD
-        out[band] = (round(left, 1), round(right, 1))
-    return out
+def card_edges():
+    """Usable width per band. The homography squares the card, so it is the
+    card box inset by the padding, the same at every height."""
+    return {band: (CARD_PAD, CARD_W - CARD_PAD) for band in MEASURED}
 
 
 def field_bounds(edges, field_of):
@@ -136,21 +128,39 @@ def field_bounds(edges, field_of):
     return out
 
 
-def build_marks(manifest):
-    """Place each traced mark against the baseline of the line it was drawn on.
+# Mark boxes measured in the warped card plane, where the baselines live.
+# The traced SVGs are unchanged; only their placement is re-derived.
+MARK_BOX = {
+    "qmark": dict(x=394, y=158, w=44, h=78),
+    "comma": dict(x=135, y=293, w=20, h=20),
+    "bang": dict(x=442, y=242, w=29, h=63),
+}
+# the period is not used by the default meme, so it is scaled from the bang
+PERIOD_FROM_BANG = dict(w=18 / 34, h=17 / 65)
+
+
+def build_marks(_manifest):
+    """Place each traced mark against the baseline of its line.
 
     The vector ships inline as a data URI so the app has nothing to fetch.
     """
     out = []
-    for m in manifest["marks"]:
-        band = MARK_LINE[m["name"]]
+    for name, char in ((n, c) for c, n in MARK_CHAR.items()):
+        band = MARK_LINE[name]
         line = MEASURED[band]
-        svg = (ASSETS / "punct" / f"{m['name']}.svg").read_text().strip()
+        svg = (ASSETS / "punct" / f"{name}.svg").read_text().strip()
+        box = MARK_BOX.get(name)
+        if box is None:
+            bang = MARK_BOX["bang"]
+            box = dict(
+                w=int(round(bang["w"] * PERIOD_FROM_BANG["w"] / (29 / 34))),
+                h=int(round(bang["h"] * PERIOD_FROM_BANG["h"] / (63 / 65))),
+            )
+            box["y"] = line["baseline"] - box["h"] + 2
+        dy = (box["y"] + box["h"]) - line["baseline"]
         out.append(dict(
-            name=m["name"],
-            char=next(c for c, n in MARK_CHAR.items() if n == m["name"]),
-            w=m["w"], h=m["h"],
-            dy=(m["y"] + m["h"]) - line["baseline"],
+            name=name, char=char,
+            w=box["w"], h=box["h"], dy=dy,
             cap=line["cap"],
             uri="data:image/svg+xml;base64," +
                 base64.b64encode(svg.encode()).decode(),
@@ -187,28 +197,29 @@ def ink_colour():
 def main():
     manifest = json.loads((ASSETS / "punct" / "manifest.json").read_text())
 
-    # the deskew matrix, spelled out so the app can invert it exactly
+    # the card correction, as a full homography from photo to card plane
     import cv2
-    w, h = manifest["roi"]["w"], manifest["roi"]["h"]
-    angle = manifest["deskew_deg"]
-    m = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
+    src = np.array([QUAD["TL"], QUAD["TR"], QUAD["BR"], QUAD["BL"]], np.float32)
+    dst = np.array([[0, 0], [CARD_W, 0], [CARD_W, CARD_H], [0, CARD_H]],
+                   np.float32)
+    m = cv2.getPerspectiveTransform(src, dst)
 
     lines = [dict(band=b, field=next(l["field"] for l in manifest["lines"]
                                      if l["band"] == b), **MEASURED[b])
              for b in "ABC"]
-    edges = card_edges(m, manifest["roi"])
+    edges = card_edges()
     fields = field_bounds(edges, {b: next(l["field"] for l in manifest["lines"]
                                            if l["band"] == b) for b in "ABC"})
     mark_list = build_marks(manifest)
 
-    # OpenCV returns [m00, m01, m02, m10, m11, m12]; canvas setTransform takes
-    # (a, b, c, d, e, f) as [[a, c, e], [b, d, f]]. Same matrix, different order.
-    m00, m01, m02, m10, m11, m12 = m.flatten()
+    # the full 3x3, row-major; render.ts maps points through it in JS
+    homography = [round(float(v), 8) for v in m.flatten()]
 
     cfg = dict(
         source=[manifest["source"]["width"], manifest["source"]["height"]],
         roi=manifest["roi"],
-        deskew=[round(float(v), 6) for v in (m00, m10, m01, m11, m02, m12)],
+        card=[CARD_W, CARD_H],
+        homography=homography,
         ink={"colour": ink_colour()},
         font=dict(
             family="CardItalic",
