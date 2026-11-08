@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "assets" / "card" / "plate.png"
+SRC = ROOT / "preview" / "cleaned-body.png"
 CONFIG = ROOT / "src" / "config.ts"
 OUT = ROOT / "preview" / "bounds_projected.png"
 

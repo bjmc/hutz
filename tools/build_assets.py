@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Build shipping assets: the inked-out card plate and the red punctuation vectors.
+"""Stage 1 of the asset build: plate and punctuation, from the source photo.
 
-The plate removes only the handwriting; the card's printed furniture (rule lines,
-scales logo) is left intact. Masking happens in deskewed space, then the mask is
-warped back so the photograph itself is never resampled.
+Reads `assets/source/original.jpg` and writes the handwriting-free plate
+(`cleaned-body.png`) plus the red punctuation vectors traced from it.
+
+The plate removes only the handwriting; the card's printed furniture (rule
+lines, scales logo) is left intact. Masking happens in deskewed space, then the
+mask is warped back so the photograph itself is never resampled.
+
+Stage 2 (`make_header_assets.py`) then takes `cleaned-body.png` and erases the
+printed name, producing the `plate.jpg` the app ships.
 """
 import json
 import re
@@ -368,9 +374,11 @@ def main():
     hand = handwriting_mask(ink, colour)
     plate, m = build_plate(img, ink, hand, colour, M, roi.shape[1], roi.shape[0])
 
-    cv2.imwrite(str(PLATE / "plate.jpg"), plate, [cv2.IMWRITE_JPEG_QUALITY, 94])
-    cv2.imwrite(str(PLATE / "plate.png"), plate)
-    print(f"plate: masked {int((m > 0).sum())}px of handwriting -> {PLATE}")
+    # Stage 1 output, lossless: stage 2 rewrites this plate and JPEG would add
+    # a second round of compression loss on the way through. It is an
+    # intermediate rather than a shipping asset, so it lives in preview/.
+    cv2.imwrite(str(DEBUG / "cleaned-body.png"), plate)
+    print(f"plate: masked {int((m > 0).sum())}px of handwriting -> {DEBUG}")
 
     n, lab, stats, _ = cv2.connectedComponentsWithStats(ink, 8)
     marks = group_marks(lab, stats, colour, n)

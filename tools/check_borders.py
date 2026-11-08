@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "assets" / "card" / "plate.png"
+SRC = ROOT / "preview" / "cleaned-body.png"
 OUT = ROOT / "preview" / "borders_check.png"
 
 # border lines as fitted: horizontal y = m*x + b, vertical x = m*y + b

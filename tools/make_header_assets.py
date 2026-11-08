@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Derive the two assets the editable card header needs.
+"""Stage 2 of the asset build: make the card header editable.
 
-`plate-clean.jpg` is the card with the printed name erased. `fingers.png` is a
-mask of the cartoon hand, which the app draws over the new text so the fingers
-occlude it.
+Reads `cleaned-body.png` (stage 1) and writes:
 
-Three things in the header must survive: the printed rules at either end of the
-name band, the hand and its drawn outline, and the paper's own shading. The band
-is therefore clipped to the rows strictly between the rules, and the hand is
-held out of the erase entirely.
+- `plate.jpg` -- the card with the printed name erased;
+- `fingers.png` -- a mask of the cartoon hand, which the app draws over the new
+  text so the fingers occlude it.
+
+Three things in the header must survive: the printed rule below the name, the
+hand and its drawn outline, and the paper's own shading. The band is therefore
+clipped to the rows the name occupies, and the hand is held out of the erase.
 """
 from pathlib import Path
 
@@ -156,7 +157,9 @@ def main():
     for d in (CARD, DEBUG):
         d.mkdir(parents=True, exist_ok=True)
 
-    plate = cv2.imread(str(CARD / "plate.jpg"))
+    # Stage 2 input: the plate with handwriting removed, straight from stage 1.
+    # Lossless, so the only JPEG in the chain is the one this stage writes.
+    plate = cv2.imread(str(DEBUG / "cleaned-body.png"))
     ph, pw = plate.shape[:2]
     H = homographies()
     inv = np.linalg.inv(H)
@@ -197,7 +200,7 @@ def main():
     clean = np.clip(plate * (1 - a) + patched * a, 0, 255).astype(np.uint8)
     clean[hand_photo > 0] = plate[hand_photo > 0]
 
-    cv2.imwrite(str(CARD / "plate-clean.jpg"), clean,
+    cv2.imwrite(str(CARD / "plate.jpg"), clean,
                 [cv2.IMWRITE_JPEG_QUALITY, 94])
     matte = np.zeros((ph, pw), np.uint8)
     matte[hand_photo > 0] = 255
