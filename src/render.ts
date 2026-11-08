@@ -138,16 +138,21 @@ export class Renderer {
           if (!img) continue;
           // each part is positioned from the baseline by its own height; using
           // the composed mark's total height would push the upper dot upward
-          const py = line.baseline + (part.dy - part.h) * scale;
+          const py = line.baseline + (part.bottom - part.h) * scale;
+          const px = placed.x + part.dx * scale;
+          const pw = part.w * scale;
+          const ph = part.h * scale;
           ctx.save();
           ctx.setTransform(...this.localTransform(placed.x, py));
-          ctx.drawImage(
-            img,
-            placed.x + part.dx * scale,
-            py,
-            part.w * scale,
-            part.h * scale,
-          );
+          if (part.rot !== 0) {
+            // rotate about the part's own centre, in card space
+            const cx = px + pw / 2;
+            const cy = py + ph / 2;
+            ctx.translate(cx, cy);
+            ctx.rotate((part.rot * Math.PI) / 180);
+            ctx.translate(-cx, -cy);
+          }
+          ctx.drawImage(img, px, py, pw, ph);
           ctx.restore();
         }
       }

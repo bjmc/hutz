@@ -3,9 +3,12 @@ export interface MarkPart {
   /** Which traced vector to draw; resolved from assets/punct. */
   svg: string;
   dx: number;
-  dy: number;
+  /** Baseline-relative bottom edge. Negative sits above the baseline. */
+  bottom: number;
   w: number;
   h: number;
+  /** Rotation in degrees about the part's own centre; 0 for most marks. */
+  rot: number;
 }
 
 export interface Mark {
@@ -13,7 +16,8 @@ export interface Mark {
   char: string;
   w: number;
   h: number;
-  dy: number;
+  /** Baseline-relative bottom edge. Negative sits above the baseline. */
+  bottom: number;
   cap: number;
   /** Extra advance as a fraction of cap, so a tall mark clears the letter. */
   pad: number;

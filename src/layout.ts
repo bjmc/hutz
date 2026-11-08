@@ -19,9 +19,11 @@ interface MarkItem {
   kind: 'mark';
   mark: Mark;
   advance: number;
+  /** Offset from the pen to the mark's left edge, centring it in its advance. */
+  shift: number;
   w: number;
   h: number;
-  dy: number;
+  bottom: number;
 }
 
 type Item = GlyphItem | SpaceItem | MarkItem;
@@ -107,13 +109,15 @@ export class Layout {
       if (mark) {
         const scale = cap / mark.cap;
         const w = mark.w * scale;
+        const pad = (MARK_GAP + mark.pad) * cap;
         out.push({
           kind: 'mark',
           mark,
-          advance: w + (MARK_GAP + mark.pad) * cap,
+          advance: w + pad,
+          shift: pad / 2,
           w,
           h: mark.h * scale,
-          dy: mark.dy * scale,
+          bottom: mark.bottom * scale,
         });
         swallowSpace = true;
         prev = null;
@@ -220,12 +224,12 @@ export class Layout {
       if (it.kind === 'mark') {
         marks.push({
           mark: it.mark,
-          x: pen,
-          top: slot.baseline + it.dy - it.h,
+          x: pen + it.shift,
+          top: slot.baseline + it.bottom - it.h,
           w: it.w,
           h: it.h,
         });
-        markRight = Math.max(markRight, pen + it.w);
+        markRight = Math.max(markRight, pen + it.shift + it.w);
       }
     };
 

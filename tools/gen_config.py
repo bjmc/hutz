@@ -74,7 +74,7 @@ DOT_PAD = 0.26      # of cap, extra advance so a stacked mark clears the letter
 # constant so all three read as the same pen. Drawn stretched, which Canvas does
 # natively, so the taper is preserved.
 DASH_SVG = "dash"
-DASH_THICK = 0.52                  # of cap, matching the card's stroke weight
+DASH_THICK = 0.20                  # of cap; a bar needs to be much longer than thick
 DASHES = {
     "-": 0.62,                     # of cap; hyphen
     "–": 0.95,                # en dash
@@ -82,6 +82,13 @@ DASHES = {
 }
 DASH_LIFT = 0.40                   # of cap, centre above the baseline
 DASH_PAD = 0.20                    # of cap, breathing room either side
+
+# Double marks built from the dash: two parallel bars, or a cross. `gap` is the
+# clearance between the bars and `rel` their length, both fractions of cap.
+DASH_PAIRS = {
+    "=": dict(rel=0.72, gap=0.30),
+    "+": dict(rel=0.72, gap=0.30),
+}
 
 
 def cap_ratio(ttf):
@@ -191,18 +198,18 @@ def build_marks(_manifest):
     """
     parts = mark_parts()
 
-    def encode(part, name):
+    def encode(part, name, rot=0):
         # the SVG file is named, not inlined: the app imports it, so the vector
         # lives in assets/ only, and a reused shape is not duplicated per mark
         _svg, dx, dy, w, h = part
-        return dict(svg=name, dx=dx, dy=dy, w=w, h=h)
+        return dict(svg=name, dx=dx, bottom=dy, w=w, h=h, rot=rot)
 
     out = []
     for char, name in MARK_CHAR.items():
         p = parts[name]
         out.append(dict(
             name=name, char=char,
-            w=p[3], h=p[4], dy=p[2], cap=MEASURED[MARK_LINE[name]]["cap"],
+            w=p[3], h=p[4], bottom=p[2], cap=MEASURED[MARK_LINE[name]]["cap"],
             pad=0.0, parts=[encode(p, name)],
         ))
 
@@ -212,16 +219,56 @@ def build_marks(_manifest):
     thick = DASH_THICK * cap
     for char, rel in DASHES.items():
         length = rel * cap
-        centre = DASH_LIFT * cap
-        # top edge of the box, and the bottom offset the mark schema stores
         h = thick
-        dy = centre - h / 2
+        # box bottom relative to the baseline; negative sits above it
+        dy = -(DASH_LIFT * cap - h / 2)
         out.append(dict(
             name=char, char=char,
-            w=round(length, 1), h=round(h, 1), dy=round(dy, 1),
+            w=round(length, 1), h=round(h, 1), bottom=round(dy, 1),
             cap=cap, pad=DASH_PAD,
+            # dash.svg is already horizontal, so no rotation is needed
             parts=[encode((dash_svg, 0, round(dy, 1), round(length, 1), round(h, 1)),
-                          DASH_SVG)],
+                          DASH_SVG, 0)],
+        ))
+
+    # marks built from the horizontal dash bar
+    for char, spec in DASH_PAIRS.items():
+        length = spec["rel"] * cap
+        gap = spec["gap"] * cap
+        # `base` is the optical centre above the baseline; every piece's
+        # bottom is stored negated, because negative sits above the baseline
+        base = DASH_LIFT * cap
+        half = thick / 2
+        if char == "=":
+            pieces = [
+                (dash_svg, 0, round(-(base - gap / 2 - half), 1),
+                 round(length, 1), round(thick, 1), 0),
+                (dash_svg, 0, round(-(base + gap / 2 - half), 1),
+                 round(length, 1), round(thick, 1), 0),
+            ]
+        else:
+            # the upright is the same box turned 90 about its centre, so it
+            # keeps the bar's box exactly; only the drawn direction changes
+            pieces = [
+                (dash_svg, 0, round(-(base - half), 1),
+                 round(length, 1), round(thick, 1), 0),
+                (dash_svg, 0, round(-(base - half), 1),
+                 round(length, 1), round(thick, 1), 90),
+            ]
+        # a rotated part's visual extent is its box swapped
+        def ext(q):
+            w, h, rot = q[3], q[4], q[5]
+            return (h, w) if rot % 180 == 90 else (w, h)
+
+        top = min(q[2] - ext(q)[1] for q in pieces)
+        bottom = max(q[2] for q in pieces)
+        out.append(dict(
+            name=char, char=char,
+            w=round(max(ext(q)[0] for q in pieces), 1),
+            h=round(bottom - top, 1),
+            bottom=round(bottom, 1),
+            cap=cap, pad=DASH_PAD,
+            parts=[encode(q[:5], DASH_SVG, q[5]) for q in pieces],
         ))
 
     for char, (lower, upper) in COMPOSED.items():
@@ -243,7 +290,7 @@ def build_marks(_manifest):
             name=char, char=char,
             w=max(q[3] for q in pieces),
             h=round(bottom - top, 1),
-            dy=round(bottom, 1),
+            bottom=round(bottom, 1),
             cap=cap, pad=DOT_PAD,
             parts=[encode(q, n) for q, n in zip(pieces, (lower, upper))],
         ))
@@ -328,7 +375,7 @@ def main():
               f"x {d['x0']}..{d['x1']}")
     for m in mark_list:
         print(f"  {m['char']} {m['name']:7s} {m['w']}x{m['h']} "
-              f"dy {m['dy']:+} at cap {m['cap']}")
+              f"bottom {m['bottom']:+} at cap {m['cap']}")
 
 
 if __name__ == "__main__":
