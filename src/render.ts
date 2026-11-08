@@ -88,16 +88,6 @@ export class Renderer {
     return this.inv;
   }
 
-  /** Map a card-space point onto the photo. */
-  private toPhoto(x: number, y: number): [number, number] {
-    const h = this.inverse();
-    const w = h[6]! * x + h[7]! * y + h[8]!;
-    return [
-      (h[0]! * x + h[1]! * y + h[2]!) / w,
-      (h[3]! * x + h[4]! * y + h[5]!) / w,
-    ];
-  }
-
   /**
    * Local affine at a card-space point, as a canvas transform.
    *
@@ -110,17 +100,16 @@ export class Renderer {
     x: number,
     y: number,
   ): [number, number, number, number, number, number] {
-    const e = 0.5;
-    const [x1, y1] = this.toPhoto(x + e, y);
-    const [x0, y0] = this.toPhoto(x - e, y);
-    const [x2, y2] = this.toPhoto(x, y + e);
-    const [x3, y3] = this.toPhoto(x, y - e);
-    const a = (x1 - x0) / (2 * e);
-    const b = (y1 - y0) / (2 * e);
-    const c = (x2 - x3) / (2 * e);
-    const d = (y2 - y3) / (2 * e);
-    const [px, py] = this.toPhoto(x, y);
-    return [a, b, c, d, px - a * x - c * y, py - b * x - d * y];
+    const h = this.inverse();
+    const w = h[6]! * x + h[7]! * y + h[8]!;
+    const u = (h[0]! * x + h[1]! * y + h[2]!) / w;
+    const v = (h[3]! * x + h[4]! * y + h[5]!) / w;
+    // analytic Jacobian of the projective map at this point
+    const a = (h[0]! - u * h[6]!) / w;
+    const c = (h[1]! - u * h[7]!) / w;
+    const b = (h[3]! - v * h[6]!) / w;
+    const d = (h[4]! - v * h[7]!) / w;
+    return [a, b, c, d, u - a * x - c * y, v - b * x - d * y];
   }
 
   private paint(ctx: CanvasRenderingContext2D, lines: PlacedLine[]): void {
@@ -132,7 +121,7 @@ export class Renderer {
     ctx.fillStyle = ink;
 
     for (const line of lines) {
-      ctx.font = `italic 700 ${line.size}px ${family}`;
+      ctx.font = `700 ${line.size}px ${family}`;
       for (const glyph of line.glyphs) {
         ctx.save();
         ctx.setTransform(...this.localTransform(glyph.x, line.baseline));

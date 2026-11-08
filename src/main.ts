@@ -58,7 +58,7 @@ async function main(): Promise<void> {
   const copy = el<HTMLButtonElement>('copy');
   const share = el<HTMLButtonElement>('share');
 
-  await document.fonts.load(`italic 700 16px ${CONFIG.font.family}`);
+  await document.fonts.load(`700 16px ${CONFIG.font.family}`);
   await document.fonts.ready;
 
   const assets = await loadAssets();
