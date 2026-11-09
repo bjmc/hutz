@@ -100,18 +100,18 @@ export const CONFIG: CardConfig = {
     {
       "name": "qmark",
       "char": "?",
-      "w": 44,
-      "h": 78,
-      "bottom": 18,
+      "w": 43,
+      "h": 80,
+      "bottom": 20,
       "cap": 28,
       "pad": 0.0,
       "parts": [
         {
           "svg": "qmark",
           "dx": 0,
-          "bottom": 18,
-          "w": 44,
-          "h": 78,
+          "bottom": 20,
+          "w": 43,
+          "h": 80,
           "rot": 0
         }
       ]
@@ -119,18 +119,18 @@ export const CONFIG: CardConfig = {
     {
       "name": "bang",
       "char": "!",
-      "w": 29,
-      "h": 63,
-      "bottom": 1,
+      "w": 26,
+      "h": 66,
+      "bottom": 3,
       "cap": 27,
       "pad": 0.0,
       "parts": [
         {
           "svg": "bang",
           "dx": 0,
-          "bottom": 1,
-          "w": 29,
-          "h": 63,
+          "bottom": 3,
+          "w": 26,
+          "h": 66,
           "rot": 0
         }
       ]
@@ -138,18 +138,18 @@ export const CONFIG: CardConfig = {
     {
       "name": "comma",
       "char": ",",
-      "w": 20,
-      "h": 20,
-      "bottom": 9,
+      "w": 18,
+      "h": 22,
+      "bottom": 10,
       "cap": 27,
       "pad": 0.0,
       "parts": [
         {
           "svg": "comma",
           "dx": 0,
-          "bottom": 9,
-          "w": 20,
-          "h": 20,
+          "bottom": 10,
+          "w": 18,
+          "h": 22,
           "rot": 0
         }
       ]
@@ -157,8 +157,8 @@ export const CONFIG: CardConfig = {
     {
       "name": "period",
       "char": ".",
-      "w": 18,
-      "h": 17,
+      "w": 16,
+      "h": 18,
       "bottom": 5,
       "cap": 27,
       "pad": 0.0,
@@ -167,8 +167,8 @@ export const CONFIG: CardConfig = {
           "svg": "period",
           "dx": 0,
           "bottom": 5,
-          "w": 18,
-          "h": 17,
+          "w": 16,
+          "h": 18,
           "rot": 0
         }
       ]
@@ -379,8 +379,8 @@ export const CONFIG: CardConfig = {
     {
       "name": ":",
       "char": ":",
-      "w": 20.2,
-      "h": 35.9,
+      "w": 17.9,
+      "h": 38.1,
       "bottom": 5,
       "cap": 27,
       "pad": 0.26,
@@ -389,16 +389,16 @@ export const CONFIG: CardConfig = {
           "svg": "period",
           "dx": 0,
           "bottom": 5,
-          "w": 18,
-          "h": 17,
+          "w": 16,
+          "h": 18,
           "rot": 0
         },
         {
           "svg": "period",
           "dx": 0,
-          "bottom": -11.9,
-          "w": 20.2,
-          "h": 19.0,
+          "bottom": -12.9,
+          "w": 17.9,
+          "h": 20.2,
           "rot": 0
         }
       ]
@@ -406,26 +406,26 @@ export const CONFIG: CardConfig = {
     {
       "name": ";",
       "char": ";",
-      "w": 20.2,
-      "h": 42.9,
-      "bottom": 9,
+      "w": 18,
+      "h": 47.1,
+      "bottom": 10,
       "cap": 27,
       "pad": 0.26,
       "parts": [
         {
           "svg": "comma",
           "dx": 0,
-          "bottom": 9,
-          "w": 20,
-          "h": 20,
+          "bottom": 10,
+          "w": 18,
+          "h": 22,
           "rot": 0
         },
         {
           "svg": "period",
           "dx": 0,
-          "bottom": -14.9,
-          "w": 20.2,
-          "h": 19.0,
+          "bottom": -16.9,
+          "w": 17.9,
+          "h": 20.2,
           "rot": 0
         }
       ]

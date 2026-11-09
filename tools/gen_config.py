@@ -194,28 +194,34 @@ def header_bounds(edge):
                 min_x=round(edge[0], 1), max_x=round(edge[1], 1))
 
 
-# Mark boxes measured in the warped card plane, where the baselines live.
-# The traced SVGs are unchanged; only their placement is re-derived.
-MARK_BOX = {
-    "qmark": dict(x=394, y=158, w=44, h=78),
-    "comma": dict(x=135, y=293, w=20, h=20),
-    "bang": dict(x=442, y=242, w=29, h=63),
-}
 # the period is not used by the default meme, so it is scaled from the bang
 PERIOD_FROM_BANG = dict(w=18 / 34, h=17 / 65)
 PERIOD_LIFT = 5   # px above the baseline for a period's bottom edge
 
 
-def mark_parts():
-    """Each traced mark as (svg, dx, dy, w, h), dy being its bottom offset."""
+def mark_parts(manifest):
+    """Each traced mark as (svg, dx, dy, w, h), dy being its bottom offset.
+
+    The box comes from the trace itself: `build_assets` already measured where
+    the mark sits in the card plane, and a separate hand-measured box would
+    stretch the vector to a slightly different shape.
+    """
+    manual = {
+        "qmark": dict(x=394, y=158, w=44, h=78),
+        "comma": dict(x=135, y=293, w=20, h=20),
+        "bang": dict(x=442, y=242, w=29, h=63),
+    }
+    traced = {m["name"]: m for m in manifest["marks"]}
+
     parts = {}
     for name in MARK_LINE:
         line = MEASURED[MARK_LINE[name]]
         svg = (ASSETS / "punct" / f"{name}.svg").read_text().strip()
-        box = MARK_BOX.get(name)
+        t = traced.get(name)
+        box = dict(x=t["x"], y=t["y"], w=t["w"], h=t["h"]) if t else manual.get(name)
         if box is None:
             # the period is not in the default meme; scale it from the bang
-            bang = MARK_BOX["bang"]
+            bang = traced.get("bang") or manual["bang"]
             w = round(bang["w"] * PERIOD_FROM_BANG["w"] / (29 / 34))
             h = round(bang["h"] * PERIOD_FROM_BANG["h"] / (63 / 65))
             # sit just above the baseline, as a period does
@@ -226,12 +232,12 @@ def mark_parts():
     return parts
 
 
-def build_marks(_manifest):
+def build_marks(manifest):
     """Place each mark against the baseline of its line.
 
     The vector ships inline as a data URI so the app has nothing to fetch.
     """
-    parts = mark_parts()
+    parts = mark_parts(manifest)
 
     def encode(part, name, rot=0):
         # the SVG file is named, not inlined: the app imports it, so the vector

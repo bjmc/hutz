@@ -26,6 +26,10 @@ URL = ("https://github.com/google/fonts/raw/main/ofl/ebgaramond/"
 
 WEIGHT = 500
 
+# A fixed timestamp for head.modified, so rebuilding the font is reproducible.
+# 2017-01-01T00:00:00Z, close to the font's own creation date.
+SOURCE_DATE_EPOCH = 3786912000
+
 # printable ASCII, Latin-1, hyphens/dashes, quotes, ellipsis, guillemets, euro
 CHARS = (
     "".join(map(chr, range(0x20, 0x7F)))
@@ -66,6 +70,11 @@ def main() -> None:
     subset.subset(font)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    # fontTools stamps head.modified with the wall clock on save, which would
+    # rewrite the file on every build even when nothing about the font changed.
+    # Pin it so the vendored asset is byte-identical run to run.
+    font.recalcTimestamp = False
+    font["head"].modified = SOURCE_DATE_EPOCH
     font.flavor = "woff2"
     font.save(str(OUT))
 
