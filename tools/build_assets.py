@@ -23,6 +23,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from clean_and_segment import (ROI, SRC, find_angle, ink_from,  # noqa: E402
                                remove_rules)
+from gen_config import CARD_H, CARD_W, MEASURED, QUAD  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "punct"
@@ -169,7 +170,14 @@ def compose(colour, mask, x, y, w, h):
         y0, y1 = y0 + ys.min(), y0 + ys.max() + 1
         keep = keep[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
 
-    px = colour[y0:y1, x0:x1].reshape(-1, 3)[keep.reshape(-1) > 0.85]
+    # The fill is the pen's own core, not its average: thresholding picks up the
+    # antialiased rim, which is a wash of red over paper and would drag the
+    # sampled colour light and desaturated.
+    sel = keep.reshape(-1) > 0.85
+    px = colour[y0:y1, x0:x1].reshape(-1, 3)[sel]
+    if len(px):
+        core = px[:, 2].astype(int) - px[:, 1].astype(int)
+        px = px[core >= np.percentile(core, 75)]
     bgr = np.median(px, axis=0) if len(px) else np.array([15, 13, 166])
     return keep, bgr[::-1].astype(int), (x0, y0), keep.shape[1::-1]
 
@@ -338,19 +346,24 @@ def group_marks(lab, stats, colour, n):
                                items=[c]))
 
     groups.sort(key=lambda g: g["x"])
+    # Identify by where the mark's foot sits against the band baselines. Count
+    # of merged components is not enough: in the card plane each mark is
+    # already one blob.
     named = []
     for g in groups:
-        if len(g["items"]) == 1:
+        foot = g["y"] + g["h"]
+        near_c = abs(foot - MEASURED["C"]["baseline"]) <= 14
+        if near_c and g["w"] <= 26 and g["h"] <= 26:
             name = "comma"
-        elif g["y"] < 120:
-            name = "qmark"      # top field: WORKS ON / CONTINGENCY?
-        else:
+        elif near_c:
             name = "bang"       # bottom field: NO, MONEY DOWN!
+        else:
+            name = "qmark"      # top field: WORKS ON / CONTINGENCY?
         named.append((name, g))
 
     out = []
     for name, g in named:
-        if name == "bang":
+        if name == "bang" and len(g["items"]) > 1:
             # the dot is traced separately so it can be emitted as an ellipse
             dot = max(g["items"], key=lambda c: c["y"])
             stem = [c for c in g["items"] if c is not dot]
@@ -367,6 +380,42 @@ def group_marks(lab, stats, colour, n):
     return out
 
 
+def card_marks():
+    """The red marks as they appear in the card plane, not the deskewed ROI.
+
+    The app draws a mark through the homography, so its shape must be taken
+    from the projection. Tracing it in the affine deskewed space instead
+    carried the missing perspective: the marks came out narrow, sheared and
+    rotated by several degrees.
+    """
+    img = cv2.imread(SRC)
+    src = np.array([QUAD[k] for k in ("TL", "TR", "BR", "BL")], np.float32)
+    dst = np.array([[0, 0], [CARD_W, 0], [CARD_W, CARD_H], [0, CARD_H]],
+                   np.float32)
+    m = cv2.getPerspectiveTransform(src, dst)
+    card = cv2.warpPerspective(img, m, (CARD_W, CARD_H),
+                               flags=cv2.INTER_LANCZOS4)
+    b, g, r = (card[..., i].astype(int) for i in range(3))
+    red = ((r > 90) & (r > g + 45) & (r > b + 45)).astype(np.uint8)
+    # the red pen lies on the desk outside the card face; the card's own border
+    # rules clip it, so only the interior is searched
+    red[:20, :] = 0
+    red[-20:, :] = 0
+    red[:, :20] = 0
+    red[:, -20:] = 0
+    # and the pen's ink is a duller, browner red than the marker on the card
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(red, 8)
+    for i in range(1, n):
+        m = lab == i
+        if stats[i][4] < 20:
+            red[m] = 0
+            continue
+        sat = float(np.median((r - g)[m]))
+        if sat < 90:
+            red[m] = 0
+    return card, red
+
+
 def main():
     for d in (OUT, PLATE, DEBUG):
         d.mkdir(parents=True, exist_ok=True)
@@ -380,14 +429,16 @@ def main():
     cv2.imwrite(str(DEBUG / "cleaned-body.png"), plate)
     print(f"plate: masked {int((m > 0).sum())}px of handwriting -> {DEBUG}")
 
-    n, lab, stats, _ = cv2.connectedComponentsWithStats(ink, 8)
-    marks = group_marks(lab, stats, colour, n)
-    print(f"{len(marks)} mark(s) to trace")
-    traced = [trace_mark(m["name"], colour, lab, m["ids"], m["box"],
+    # the identity goes to the plate; the marks are re-traced in card space
+    card, red = card_marks()
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(red, 8)
+    marks = group_marks(lab, stats, card, n)
+    traced = [trace_mark(m["name"], card, lab, m["ids"], m["box"],
                          dot_ids=m["dot_ids"], dot_box=m.get("dot_box"),
                          ellipse_only=(m["role"] == "dot"))
               for m in marks]
     traced = [t for t in traced if t]
+    print(f"{len(traced)} mark(s) traced in card space")
 
     manifest = dict(
         source=dict(file="original.jpg", width=960, height=720),

@@ -43,12 +43,20 @@ export class Renderer {
     // blurred a touch and multiplied into the photo. Drawing straight onto the
     // canvas leaves vector-sharp edges that read as a modern overlay on a
     // soft, JPEG-compressed screencap.
-    const layer = this.textLayer(width, height, lines);
+    const layer = this.textLayer(width, height, lines, false);
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
     ctx.globalAlpha = 0.94;
     if ('filter' in ctx) ctx.filter = 'blur(0.45px)';
     ctx.drawImage(layer, 0, 0);
+    ctx.restore();
+
+    // The marks are pen on paper, so their colour was already sampled from the
+    // photograph. Multiplying them again would darken that a second time.
+    const marks = this.textLayer(width, height, lines, true);
+    ctx.save();
+    if ('filter' in ctx) ctx.filter = 'blur(0.45px)';
+    ctx.drawImage(marks, 0, 0);
     ctx.restore();
 
     // The plate has no printed name, so the cartoon hand must be laid back over
@@ -62,6 +70,7 @@ export class Renderer {
     width: number,
     height: number,
     lines: PlacedLine[],
+    marksOnly: boolean,
   ): HTMLCanvasElement {
     if (!this.layer) {
       this.layer = document.createElement('canvas');
@@ -72,7 +81,7 @@ export class Renderer {
     const lctx = layer.getContext('2d');
     if (!lctx) throw new Error('canvas 2d unavailable');
 
-    this.paint(lctx, lines);
+    this.paint(lctx, lines, marksOnly);
     return layer;
   }
 
@@ -118,7 +127,11 @@ export class Renderer {
     return [a, b, c, d, u - a * x - c * y, v - b * x - d * y];
   }
 
-  private paint(ctx: CanvasRenderingContext2D, lines: PlacedLine[]): void {
+  private paint(
+    ctx: CanvasRenderingContext2D,
+    lines: PlacedLine[],
+    marksOnly: boolean,
+  ): void {
     const [r, g, b] = this.cfg.ink.colour;
     const ink = `rgb(${r} ${g} ${b})`;
     const family = this.cfg.font.family;
@@ -127,6 +140,10 @@ export class Renderer {
     ctx.fillStyle = ink;
 
     for (const line of lines) {
+      if (marksOnly) {
+        this.paintMarks(ctx, line);
+        continue;
+      }
       ctx.font = `${this.cfg.font.weight} ${line.size}px ${family}`;
       for (const glyph of line.glyphs) {
         ctx.save();
@@ -134,33 +151,36 @@ export class Renderer {
         ctx.fillText(glyph.ch, glyph.x, line.baseline);
         ctx.restore();
       }
-      for (const placed of line.marks) {
-        const imgs = this.assets.marks.get(placed.mark.name);
-        if (!imgs) continue;
-        const scale = placed.w / placed.mark.w;
-        for (let i = 0; i < placed.mark.parts.length; i++) {
-          const part = placed.mark.parts[i]!;
-          const img = imgs[i];
-          if (!img) continue;
-          // each part is positioned from the baseline by its own height; using
-          // the composed mark's total height would push the upper dot upward
-          const py = line.baseline + (part.bottom - part.h) * scale;
-          const px = placed.x + part.dx * scale;
-          const pw = part.w * scale;
-          const ph = part.h * scale;
-          ctx.save();
-          ctx.setTransform(...this.localTransform(placed.x, py));
-          if (part.rot !== 0) {
-            // rotate about the part's own centre, in card space
-            const cx = px + pw / 2;
-            const cy = py + ph / 2;
-            ctx.translate(cx, cy);
-            ctx.rotate((part.rot * Math.PI) / 180);
-            ctx.translate(-cx, -cy);
-          }
-          ctx.drawImage(img, px, py, pw, ph);
-          ctx.restore();
+    }
+  }
+
+  private paintMarks(ctx: CanvasRenderingContext2D, line: PlacedLine): void {
+    for (const placed of line.marks) {
+      const imgs = this.assets.marks.get(placed.mark.name);
+      if (!imgs) continue;
+      const scale = placed.w / placed.mark.w;
+      for (let i = 0; i < placed.mark.parts.length; i++) {
+        const part = placed.mark.parts[i]!;
+        const img = imgs[i];
+        if (!img) continue;
+        // each part is positioned from the baseline by its own height; using
+        // the composed mark's total height would push the upper dot upward
+        const py = line.baseline + (part.bottom - part.h) * scale;
+        const px = placed.x + part.dx * scale;
+        const pw = part.w * scale;
+        const ph = part.h * scale;
+        ctx.save();
+        ctx.setTransform(...this.localTransform(placed.x, py));
+        if (part.rot !== 0) {
+          // rotate about the part's own centre, in card space
+          const cx = px + pw / 2;
+          const cy = py + ph / 2;
+          ctx.translate(cx, cy);
+          ctx.rotate((part.rot * Math.PI) / 180);
+          ctx.translate(-cx, -cy);
         }
+        ctx.drawImage(img, px, py, pw, ph);
+        ctx.restore();
       }
     }
   }
