@@ -31,6 +31,10 @@ header:
 config:
     {{python}} tools/gen_config.py
 
+# Export the printed lettering in card space, for typeface identification
+typeface:
+    {{python}} tools/text_card.py
+
 # Build the single-file site into dist/
 site:
     bun run build

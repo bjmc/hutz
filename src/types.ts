@@ -58,6 +58,8 @@ export interface CardConfig {
     cap_ratio: number;
     advance_ratio: number;
     word_space: number;
+    /** Per-glyph tracking, as a fraction of the em. */
+    tracking: number;
   };
   lines: LineSlot[];
   fields: { header: FieldBounds; top: FieldBounds; bottom: FieldBounds };

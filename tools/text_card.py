@@ -36,7 +36,12 @@ def to_card(img):
 
 
 def isolate(card, box):
-    """Crop one measured band and render it as black on white, upscaled."""
+    """Crop one measured band and render it as black on white, upscaled.
+
+    Thresholding is done after upscaling so Otsu sees smooth strokes rather than
+    the card's own dither, and per band so a single line's ink/paper split is not
+    skewed by the other lines.
+    """
     x0, x1 = box["x0"], box["x1"]
     cap, baseline = box["cap"], box["baseline"]
     y0 = max(0, baseline - cap - PAD)
@@ -46,9 +51,24 @@ def isolate(card, box):
     grey = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
     big = cv2.resize(grey, None, fx=SCALE, fy=SCALE,
                      interpolation=cv2.INTER_LANCZOS4)
-    # paper is mottled mid-grey; a flat cut cleanly separates ink from stock
-    _t, ink = cv2.threshold(big, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return 255 - ink
+    big = cv2.GaussianBlur(big, (0, 0), 2)
+
+    _t, ink = cv2.threshold(big, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+    # drop paper speckle left by the mottled stock
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(ink, 8)
+    clean = np.zeros_like(ink)
+    for i in range(1, n):
+        if stats[i][4] >= 60:
+            clean[lab == i] = 255
+
+    ys, xs = np.nonzero(clean)
+    if len(xs) == 0:
+        return 255 - ink
+    pad = 6 * SCALE
+    y0, y1 = max(0, ys.min() - pad), min(clean.shape[0], ys.max() + pad)
+    x0, x1 = max(0, xs.min() - pad), min(clean.shape[1], xs.max() + pad)
+    return 255 - clean[y0:y1, x0:x1]
 
 
 def main():

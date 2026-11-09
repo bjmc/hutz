@@ -182,6 +182,11 @@ export class Layout {
     return seen ? last - first : 0;
   }
 
+  /** Per-glyph tracking in px at a given cap height. */
+  private trackFor(cap: number): number {
+    return this.cfg.font.tracking * (cap / this.capRatio());
+  }
+
   /** Index just past the last glyph; items beyond it are trailing edit marks. */
   private lastGlyphIndex(items: Item[]): number {
     let last = -1;
@@ -199,14 +204,15 @@ export class Layout {
   ): PlacedLine {
     const all = this.items(text, cap);
     const size = this.sizeFor(cap);
+    const track = this.trackFor(cap);
 
     // trailing marks hang past the text, so they take no part in centring
     const lastGlyph = this.lastGlyphIndex(all);
     const body = lastGlyph >= 0 ? all.slice(0, lastGlyph + 1) : all;
     const tail = lastGlyph >= 0 ? all.slice(lastGlyph + 1) : [];
 
-    // centre the run's ink in the box; spacing stays the font's own advance
-    const natural = this.span(body, 0);
+    // centre the run's ink in the box, advancing by the font's own metrics
+    const natural = this.span(body, track);
     const lead = body[0];
     const offset = lead !== undefined && lead.kind === 'glyph' ? lead.left : 0;
     const start = (box.x0 + box.x1) / 2 - natural / 2 - offset;
@@ -240,7 +246,7 @@ export class Layout {
       // kerns accumulate down the run, as the shaper would place them
       if (it.kind === 'glyph') pen += it.kern;
       push(it, pen);
-      if (i < body.length - 1) pen += it.advance;
+      if (i < body.length - 1) pen += it.advance + track;
     }
     // a trailing mark sits immediately after the last glyph's advance; its own
     // advance already carries the gap
@@ -275,7 +281,9 @@ export class Layout {
   measure(raw: string, field: 'header' | 'top' | 'bottom'): number[] {
     const slots = this.slots(field);
     const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
-    return slots.map(s => this.span(this.items(text, s.cap), 0));
+    return slots.map(s =>
+      this.span(this.items(text, s.cap), this.trackFor(s.cap)),
+    );
   }
 
   /**

@@ -131,12 +131,23 @@ def ink_widths(ttf, text, size):
 
 
 def word_space_ratio():
-    """Word gap as a multiple of cap height, from the measured gaps.
+    """Word gap as a multiple of cap height.
 
-    A: 25 px at cap 30, C: 23 px at cap 28 -- the card's own spacing, which the
-    app keeps so wrapped text looks like the same hand.
+    The font's own space is 0.32 cap, which sets the card's lines about 10%
+    narrower than the printed lettering; the printed word gaps measure closer
+    to 0.9-1.0 cap.
     """
-    return 0.83
+    return 1.0
+
+
+def tracking_ratio():
+    """Per-glyph tracking, as a fraction of the em.
+
+    The printed lettering is ticked in about 0.05em tighter than the font's
+    default advances, which is what brings the long lines down to their
+    measured widths.
+    """
+    return -0.05
 
 
 def card_edges():
@@ -401,6 +412,7 @@ def main():
             cap_ratio=round(cap_ratio(FONT), 5),
             advance_ratio=round(advance_ratio(FONT), 5),
             word_space=word_space_ratio(),
+            tracking=tracking_ratio(),
         ),
         lines=lines,
         fields=fields,
@@ -415,6 +427,7 @@ def main():
         f"export const CONFIG: CardConfig = {body};\n")
     print(f"wrote {OUT.relative_to(ROOT)}")
     print(f"  word space {word_space_ratio():.3f} cap")
+    print(f"  tracking {tracking_ratio():+.3f} em")
     for band in "ABC":
         d = MEASURED[band]
         print(f"  {band} cap {d['cap']} baseline {d['baseline']} "

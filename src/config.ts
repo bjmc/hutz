@@ -39,7 +39,8 @@ export const CONFIG: CardConfig = {
     "weight": 500,
     "cap_ratio": 0.6625,
     "advance_ratio": 0.90699,
-    "word_space": 0.83
+    "word_space": 1.0,
+    "tracking": -0.05
   },
   "lines": [
     {
