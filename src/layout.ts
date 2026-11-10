@@ -65,15 +65,12 @@ const MARK_GAP = 0.06;      // of cap, between the last letter and its edit mark
 const PROBE = 1000;         // font size used to read the font's own metrics
 
 export class Layout {
-  private byChar = new Map<string, Mark>();
   private ratio: number | null = null;
 
   constructor(
     private ctx: CanvasRenderingContext2D,
     private cfg: CardConfig,
-  ) {
-    for (const m of cfg.marks) this.byChar.set(m.char, m);
-  }
+  ) { }
 
   private fontAt(size: number): void {
     this.ctx.font =
@@ -106,7 +103,7 @@ export class Layout {
       if (swallowSpace && ch === ' ') continue;
       swallowSpace = false;
 
-      const mark = this.byChar.get(ch);
+      const mark = this.cfg.marks[ch];
       if (mark) {
         const scale = cap / mark.cap;
         const w = mark.w * scale;

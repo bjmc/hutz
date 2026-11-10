@@ -156,12 +156,10 @@ export class Renderer {
 
   private paintMarks(ctx: CanvasRenderingContext2D, line: PlacedLine): void {
     for (const placed of line.marks) {
-      const imgs = this.assets.marks.get(placed.mark.name);
-      if (!imgs) continue;
       const scale = placed.w / placed.mark.w;
       for (let i = 0; i < placed.mark.parts.length; i++) {
         const part = placed.mark.parts[i]!;
-        const img = imgs[i];
+        const img = this.assets.marks.get(part.svg)?.[0];
         if (!img) continue;
         // each part is positioned from the baseline by its own height; using
         // the composed mark's total height would push the upper dot upward

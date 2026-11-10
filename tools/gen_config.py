@@ -245,14 +245,18 @@ def build_marks(manifest):
         _svg, dx, dy, w, h = part
         return dict(svg=name, dx=dx, bottom=dy, w=w, h=h, rot=rot)
 
-    out = []
+    out = {}
+
+    def emit(char, **body):
+        if char in out:
+            raise ValueError(f"duplicate mark for {char!r}")
+        out[char] = body
+
     for char, name in MARK_CHAR.items():
         p = parts[name]
-        out.append(dict(
-            name=name, char=char,
-            w=p[3], h=p[4], bottom=p[2], cap=MEASURED[MARK_LINE[name]]["cap"],
-            pad=0.0, parts=[encode(p, name)],
-        ))
+        emit(char,
+             w=p[3], h=p[4], bottom=p[2], cap=MEASURED[MARK_LINE[name]]["cap"],
+             pad=0.0, parts=[encode(p, name)])
 
     # dashes: one traced stroke, three lengths, one thickness
     cap = MEASURED["C"]["cap"]
@@ -263,14 +267,12 @@ def build_marks(manifest):
         h = thick
         # box bottom relative to the baseline; negative sits above it
         dy = -(DASH_LIFT * cap - h / 2)
-        out.append(dict(
-            name=char, char=char,
-            w=round(length, 1), h=round(h, 1), bottom=round(dy, 1),
-            cap=cap, pad=DASH_PAD,
-            # dash.svg is already horizontal, so no rotation is needed
-            parts=[encode((dash_svg, 0, round(dy, 1), round(length, 1), round(h, 1)),
-                          DASH_SVG, 0)],
-        ))
+        emit(char,
+             w=round(length, 1), h=round(h, 1), bottom=round(dy, 1),
+             cap=cap, pad=DASH_PAD,
+             # dash.svg is already horizontal, so no rotation is needed
+             parts=[encode((dash_svg, 0, round(dy, 1), round(length, 1),
+                            round(h, 1)), DASH_SVG, 0)])
 
     # marks built from rotated copies of the horizontal dash bar
     def extent(length, thick_, rot):
@@ -303,11 +305,9 @@ def build_marks(manifest):
                 (dash_svg, round(cx - x0 - length / 2, 1),
                  round(thick_ / 2 - cy, 1), round(length, 1),
                  round(thick_, 1)), DASH_SVG, rot))
-        out.append(dict(
-            name=char, char=char,
-            w=round(x1 - x0, 1), h=round(y1 - y0, 1), bottom=round(-y0, 1),
-            cap=cap, pad=DASH_PAD, parts=parts,
-        ))
+        emit(char,
+             w=round(x1 - x0, 1), h=round(y1 - y0, 1), bottom=round(-y0, 1),
+             cap=cap, pad=DASH_PAD, parts=parts)
 
     base = DASH_LIFT * cap
     bar = PAIR_REL * cap
@@ -345,14 +345,12 @@ def build_marks(manifest):
         ]
         top = min(q[2] - q[4] for q in pieces)
         bottom = max(q[2] for q in pieces)
-        out.append(dict(
-            name=char, char=char,
-            w=max(q[3] for q in pieces),
-            h=round(bottom - top, 1),
-            bottom=round(bottom, 1),
-            cap=cap, pad=DOT_PAD,
-            parts=[encode(q, n) for q, n in zip(pieces, (lower, upper))],
-        ))
+        emit(char,
+             w=max(q[3] for q in pieces),
+             h=round(bottom - top, 1),
+             bottom=round(bottom, 1),
+             cap=cap, pad=DOT_PAD,
+             parts=[encode(q, n) for q, n in zip(pieces, (lower, upper))])
     return out
 
 
@@ -438,8 +436,8 @@ def main():
         d = MEASURED[band]
         print(f"  {band} cap {d['cap']} baseline {d['baseline']} "
               f"x {d['x0']}..{d['x1']}")
-    for m in mark_list:
-        print(f"  {m['char']} {m['name']:7s} {m['w']}x{m['h']} "
+    for char, m in mark_list.items():
+        print(f"  {char} {m['w']}x{m['h']} "
               f"bottom {m['bottom']:+} at cap {m['cap']}")
 
 

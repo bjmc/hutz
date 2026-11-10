@@ -37,12 +37,15 @@ async function loadAssets(): Promise<Assets> {
   }
   // the finger cut-out comes from <img> too, for the same reason
   const fingers = el<HTMLImageElement>('fingers');
-  const marks = new Map(
+  // keyed by SVG name: `:` and `;` both draw the period vector, and the four
+  // dash-derived marks share one bar, so each asset is loaded exactly once
+  const names = new Set(
+    Object.values(CONFIG.marks).flatMap(m => m.parts.map(p => p.svg)),
+  );
+  const marks = new Map<string, HTMLImageElement[]>(
     await Promise.all(
-      CONFIG.marks.map(async m => [
-        m.name,
-        await Promise.all(m.parts.map(p => loadImage(markDataUri(p.svg)))),
-      ] as const),
+      [...names].map(async (n): Promise<[string, HTMLImageElement[]]> =>
+        [n, [await loadImage(markDataUri(n))]]),
     ),
   );
   return { plate, fingers, marks };

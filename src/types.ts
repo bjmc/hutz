@@ -12,8 +12,6 @@ export interface MarkPart {
 }
 
 export interface Mark {
-  name: string;
-  char: string;
   w: number;
   h: number;
   /** Baseline-relative bottom edge. Negative sits above the baseline. */
@@ -63,7 +61,8 @@ export interface CardConfig {
   };
   lines: LineSlot[];
   fields: { header: FieldBounds; top: FieldBounds; bottom: FieldBounds };
-  marks: Mark[];
+  /** Keyed by the character the mark draws, so lookups take the typed glyph. */
+  marks: Record<string, Mark>;
 }
 
 export interface CardState {
@@ -76,5 +75,6 @@ export interface Assets {
   plate: HTMLImageElement;
   /** Matte of the cartoon hand, drawn over the header so it occludes it. */
   fingers: HTMLImageElement;
+  /** Keyed by SVG name; a shape shared by several marks is loaded once. */
   marks: Map<string, HTMLImageElement[]>;
 }

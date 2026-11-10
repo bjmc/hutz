@@ -96,10 +96,8 @@ export const CONFIG: CardConfig = {
       "max_x": 516
     }
   },
-  "marks": [
-    {
-      "name": "qmark",
-      "char": "?",
+  "marks": {
+    "?": {
       "w": 43,
       "h": 80,
       "bottom": 20,
@@ -116,9 +114,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": "bang",
-      "char": "!",
+    "!": {
       "w": 26,
       "h": 66,
       "bottom": 3,
@@ -135,9 +131,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": "comma",
-      "char": ",",
+    ",": {
       "w": 18,
       "h": 22,
       "bottom": 10,
@@ -154,9 +148,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": "period",
-      "char": ".",
+    ".": {
       "w": 16,
       "h": 18,
       "bottom": 5,
@@ -173,9 +165,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": "-",
-      "char": "-",
+    "-": {
       "w": 16.7,
       "h": 5.4,
       "bottom": -8.1,
@@ -192,9 +182,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": "\u2013",
-      "char": "\u2013",
+    "\u2013": {
       "w": 25.6,
       "h": 5.4,
       "bottom": -8.1,
@@ -211,9 +199,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": "\u2014",
-      "char": "\u2014",
+    "\u2014": {
       "w": 35.1,
       "h": 5.4,
       "bottom": -8.1,
@@ -230,9 +216,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": "=",
-      "char": "=",
+    "=": {
       "w": 19.4,
       "h": 13.5,
       "bottom": -4.1,
@@ -257,9 +241,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": "+",
-      "char": "+",
+    "+": {
       "w": 19.4,
       "h": 19.4,
       "bottom": -1.1,
@@ -284,9 +266,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": "/",
-      "char": "/",
+    "/": {
       "w": 21.4,
       "h": 21.4,
       "bottom": -0.1,
@@ -303,9 +283,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": "\\",
-      "char": "\\",
+    "\\": {
       "w": 21.4,
       "h": 21.4,
       "bottom": -0.1,
@@ -322,9 +300,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": "<",
-      "char": "<",
+    "<": {
       "w": 13.7,
       "h": 23.7,
       "bottom": 1.0,
@@ -349,9 +325,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": ">",
-      "char": ">",
+    ">": {
       "w": 13.7,
       "h": 23.7,
       "bottom": 1.0,
@@ -376,9 +350,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": ":",
-      "char": ":",
+    ":": {
       "w": 17.9,
       "h": 38.1,
       "bottom": 5,
@@ -403,9 +375,7 @@ export const CONFIG: CardConfig = {
         }
       ]
     },
-    {
-      "name": ";",
-      "char": ";",
+    ";": {
       "w": 18,
       "h": 47.1,
       "bottom": 10,
@@ -430,5 +400,5 @@ export const CONFIG: CardConfig = {
         }
       ]
     }
-  ]
+  }
 };
