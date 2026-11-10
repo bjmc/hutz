@@ -4,7 +4,7 @@ export interface MarkPart {
   svg: string;
   /** Offset from the mark box's left edge to this part's left edge. */
   dx: number;
-  /** Offset from the baseline to this part's top edge; negative sits above. */
+  /** Offset from the mark box's top edge to this part's top edge. */
   dy: number;
   w: number;
   h: number;
@@ -15,7 +15,7 @@ export interface MarkPart {
 export interface Mark {
   w: number;
   h: number;
-  /** Offset from the baseline to the mark's bottom edge; negative is above. */
+  /** Offset from the baseline to the mark's bottom edge, in card pixels. */
   bottom: number;
   cap: number;
   /** Extra advance as a fraction of cap, so a tall mark clears the letter. */

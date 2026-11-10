@@ -23,8 +23,8 @@ interface MarkItem {
   shift: number;
   w: number;
   h: number;
-  /** Offset from the baseline to the mark's bottom edge. */
-  bottom: number;
+  /** Baseline to the mark's bottom edge, scaled to the run's cap. */
+  drop: number;
 }
 
 type Item = GlyphItem | SpaceItem | MarkItem;
@@ -118,7 +118,7 @@ export class Layout {
           shift: pad / 2,
           w,
           h: mark.h * scale,
-          bottom: mark.bottom * scale,
+          drop: mark.bottom * scale,
         });
         swallowSpace = true;
         prev = null;
@@ -232,7 +232,7 @@ export class Layout {
         marks.push({
           mark: it.mark,
           x: pen + it.shift,
-          y: slot.baseline + it.bottom - it.h,
+          y: slot.baseline + it.drop - it.h,
           w: it.w,
           h: it.h,
         });

@@ -11,7 +11,7 @@ import math
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
@@ -75,8 +75,8 @@ COMPOSED = {
     ";": ("comma", "period"),
 }
 PERIOD_DOT_SCALE = 1.12
-DOT_GAP = 0.02      # of cap, clearance between the stacked marks
-DOT_PAD = 0.26      # of cap, extra advance so a stacked mark clears the letter
+STACK_GAP = 0.02    # of cap, clearance between the stacked marks
+STACK_PAD = 0.26    # of cap, extra advance so a stacked mark clears the letter
 
 # The dash is the bang's stroke, dot removed and rotated flat (tools/make_dash.py).
 # Only its length varies between hyphen and en/em dash; the thickness is held
@@ -89,8 +89,11 @@ DASHES = {
     "–": 0.95,                # en dash
     "—": 1.30,                # em dash
 }
+# room either side of a mark, as a fraction of cap. One value covers every
+# synthesised mark: the dash family wants side clearance, and a stacked mark
+# needs the same so the pair clears the letter beside it.
+MARK_PAD = 0.20
 DASH_LIFT = 0.40                   # of cap, centre above the baseline
-DASH_PAD = 0.20                    # of cap, breathing room either side
 
 # Double marks built from the dash: two parallel bars, or a cross. `gap` is the
 # clearance between the bars and `rel` their length, both fractions of cap.
@@ -107,27 +110,6 @@ def cap_ratio(ttf):
     font = ImageFont.truetype(str(ttf), 400)
     b = font.getbbox("H")
     return (b[3] - b[1]) / 400.0
-
-
-def advance_ratio(ttf):
-    font = ImageFont.truetype(str(ttf), 400)
-    return font.getlength("M") / 400.0
-
-
-def ink_widths(ttf, text, size):
-    """Ink width of each glyph, in px, at `size`. Spaces report zero."""
-    font = ImageFont.truetype(str(ttf), size)
-    out = []
-    for ch in text:
-        if ch == " ":
-            out.append(0.0)
-            continue
-        b = font.getbbox(ch)
-        img = Image.new("L", (b[2] + 60, size * 3), 255)
-        ImageDraw.Draw(img).text((30 - b[0], size), ch, font=font, fill=0)
-        cols = np.nonzero((np.asarray(img) < 128).any(0))[0]
-        out.append(float(cols.max() - cols.min() + 1))
-    return out
 
 
 def word_space_ratio():
@@ -242,21 +224,32 @@ def build_marks(manifest):
     def encode(part, name, rot=0):
         # the SVG file is named, not inlined: the app imports it, so the vector
         # lives in assets/ only, and a reused shape is not duplicated per mark
-        _svg, dx, dy, w, h = part
-        return dict(svg=name, dx=dx, bottom=dy, w=w, h=h, rot=rot)
+        _svg, dx, bottom, w, h = part
+        # dy is measured to the part's top edge, not its bottom: the renderer
+        # places every part from one origin, so a single convention avoids the
+        # sign flip that made stacked marks drift upward
+        return dict(svg=name, dx=dx, dy=bottom - h, w=w, h=h, rot=rot)
 
     out = {}
 
     def emit(char, **body):
         if char in out:
             raise ValueError(f"duplicate mark for {char!r}")
+        # pad is optional in the type; a traced mark sits at its own size
+        if not body.get("pad"):
+            body.pop("pad", None)
+        # rebase the parts onto the mark box, so the renderer can place every
+        # part from one origin without knowing the baseline
+        top = body["bottom"] - body["h"]
+        for p in body["parts"]:
+            p["dy"] = round(p["dy"] - top, 1)
         out[char] = body
 
     for char, name in MARK_CHAR.items():
         p = parts[name]
         emit(char,
              w=p[3], h=p[4], bottom=p[2], cap=MEASURED[MARK_LINE[name]]["cap"],
-             pad=0.0, parts=[encode(p, name)])
+             parts=[encode(p, name)])
 
     # dashes: one traced stroke, three lengths, one thickness
     cap = MEASURED["C"]["cap"]
@@ -269,7 +262,7 @@ def build_marks(manifest):
         dy = -(DASH_LIFT * cap - h / 2)
         emit(char,
              w=round(length, 1), h=round(h, 1), bottom=round(dy, 1),
-             cap=cap, pad=DASH_PAD,
+             cap=cap, pad=MARK_PAD,
              # dash.svg is already horizontal, so no rotation is needed
              parts=[encode((dash_svg, 0, round(dy, 1), round(length, 1),
                             round(h, 1)), DASH_SVG, 0)])
@@ -307,7 +300,7 @@ def build_marks(manifest):
                  round(thick_, 1)), DASH_SVG, rot))
         emit(char,
              w=round(x1 - x0, 1), h=round(y1 - y0, 1), bottom=round(-y0, 1),
-             cap=cap, pad=DASH_PAD, parts=parts)
+             cap=cap, pad=MARK_PAD, parts=parts)
 
     base = DASH_LIFT * cap
     bar = PAIR_REL * cap
@@ -338,7 +331,7 @@ def build_marks(manifest):
             s = PERIOD_DOT_SCALE
             up_w, up_h, up_dy = up_w * s, up_h * s, up_dy * s
         # lift the upper mark so its bottom clears the lower mark's top
-        up_dy -= low_h + DOT_GAP * cap
+        up_dy -= low_h + STACK_GAP * cap
         pieces = [
             (low_svg, low_dx, round(low_dy, 1), round(low_w, 1), round(low_h, 1)),
             (up_svg, up_dx, round(up_dy, 1), round(up_w, 1), round(up_h, 1)),
@@ -349,7 +342,7 @@ def build_marks(manifest):
              w=max(q[3] for q in pieces),
              h=round(bottom - top, 1),
              bottom=round(bottom, 1),
-             cap=cap, pad=DOT_PAD,
+             cap=cap, pad=STACK_PAD,
              parts=[encode(q, n) for q, n in zip(pieces, (lower, upper))])
     return out
 
@@ -414,7 +407,6 @@ def main():
             family="CardFont",
             weight=FONT_WEIGHT,
             cap_ratio=round(cap_ratio(FONT), 5),
-            advance_ratio=round(advance_ratio(FONT), 5),
             word_space=word_space_ratio(),
             tracking=tracking_ratio(),
         ),
