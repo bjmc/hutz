@@ -38,7 +38,6 @@ export const CONFIG: CardConfig = {
     "family": "CardFont",
     "weight": 500,
     "cap_ratio": 0.6625,
-    "advance_ratio": 0.90699,
     "word_space": 1.0,
     "tracking": -0.05
   },
@@ -102,12 +101,11 @@ export const CONFIG: CardConfig = {
       "h": 80,
       "bottom": 20,
       "cap": 28,
-      "pad": 0.0,
       "parts": [
         {
           "svg": "qmark",
           "dx": 0,
-          "bottom": 20,
+          "dy": 0,
           "w": 43,
           "h": 80,
           "rot": 0
@@ -119,12 +117,11 @@ export const CONFIG: CardConfig = {
       "h": 66,
       "bottom": 3,
       "cap": 27,
-      "pad": 0.0,
       "parts": [
         {
           "svg": "bang",
           "dx": 0,
-          "bottom": 3,
+          "dy": 0,
           "w": 26,
           "h": 66,
           "rot": 0
@@ -136,12 +133,11 @@ export const CONFIG: CardConfig = {
       "h": 22,
       "bottom": 10,
       "cap": 27,
-      "pad": 0.0,
       "parts": [
         {
           "svg": "comma",
           "dx": 0,
-          "bottom": 10,
+          "dy": 0,
           "w": 18,
           "h": 22,
           "rot": 0
@@ -153,12 +149,11 @@ export const CONFIG: CardConfig = {
       "h": 18,
       "bottom": 5,
       "cap": 27,
-      "pad": 0.0,
       "parts": [
         {
           "svg": "period",
           "dx": 0,
-          "bottom": 5,
+          "dy": 0,
           "w": 16,
           "h": 18,
           "rot": 0
@@ -175,7 +170,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": 0,
-          "bottom": -8.1,
+          "dy": 0.0,
           "w": 16.7,
           "h": 5.4,
           "rot": 0
@@ -192,7 +187,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": 0,
-          "bottom": -8.1,
+          "dy": 0.0,
           "w": 25.6,
           "h": 5.4,
           "rot": 0
@@ -209,7 +204,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": 0,
-          "bottom": -8.1,
+          "dy": 0.0,
           "w": 35.1,
           "h": 5.4,
           "rot": 0
@@ -226,7 +221,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": 0.0,
-          "bottom": -4.1,
+          "dy": 8.1,
           "w": 19.4,
           "h": 5.4,
           "rot": 0
@@ -234,7 +229,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": 0.0,
-          "bottom": -12.2,
+          "dy": 0.0,
           "w": 19.4,
           "h": 5.4,
           "rot": 0
@@ -251,7 +246,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": 0.0,
-          "bottom": -8.1,
+          "dy": 7.0,
           "w": 19.4,
           "h": 5.4,
           "rot": 0
@@ -259,7 +254,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": 0.0,
-          "bottom": -8.1,
+          "dy": 7.0,
           "w": 19.4,
           "h": 5.4,
           "rot": 90
@@ -276,7 +271,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": -1.7,
-          "bottom": -8.1,
+          "dy": 8.0,
           "w": 24.8,
           "h": 5.4,
           "rot": -45
@@ -293,7 +288,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": -1.7,
-          "bottom": -8.1,
+          "dy": 8.0,
           "w": 24.8,
           "h": 5.4,
           "rot": 45
@@ -310,7 +305,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": -0.1,
-          "bottom": -13.1,
+          "dy": 4.2,
           "w": 14.0,
           "h": 5.4,
           "rot": -45
@@ -318,7 +313,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": -0.1,
-          "bottom": -3.1,
+          "dy": 14.2,
           "w": 14.0,
           "h": 5.4,
           "rot": 45
@@ -335,7 +330,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": -0.1,
-          "bottom": -13.1,
+          "dy": 4.2,
           "w": 14.0,
           "h": 5.4,
           "rot": 45
@@ -343,7 +338,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "dash",
           "dx": -0.1,
-          "bottom": -3.1,
+          "dy": 14.2,
           "w": 14.0,
           "h": 5.4,
           "rot": -45
@@ -360,7 +355,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "period",
           "dx": 0,
-          "bottom": 5,
+          "dy": 20.1,
           "w": 16,
           "h": 18,
           "rot": 0
@@ -368,7 +363,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "period",
           "dx": 0,
-          "bottom": -12.9,
+          "dy": 0.0,
           "w": 17.9,
           "h": 20.2,
           "rot": 0
@@ -385,7 +380,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "comma",
           "dx": 0,
-          "bottom": 10,
+          "dy": 25.1,
           "w": 18,
           "h": 22,
           "rot": 0
@@ -393,7 +388,7 @@ export const CONFIG: CardConfig = {
         {
           "svg": "period",
           "dx": 0,
-          "bottom": -16.9,
+          "dy": 0.0,
           "w": 17.9,
           "h": 20.2,
           "rot": 0

@@ -23,6 +23,7 @@ interface MarkItem {
   shift: number;
   w: number;
   h: number;
+  /** Offset from the baseline to the mark's bottom edge. */
   bottom: number;
 }
 
@@ -35,8 +36,10 @@ export interface PlacedGlyph {
 
 export interface PlacedMark {
   mark: Mark;
+  /** Left edge of the mark's box, in card space. */
   x: number;
-  top: number;
+  /** Top edge of the mark's box, in card space. */
+  y: number;
   w: number;
   h: number;
 }
@@ -107,7 +110,7 @@ export class Layout {
       if (mark) {
         const scale = cap / mark.cap;
         const w = mark.w * scale;
-        const pad = (MARK_GAP + mark.pad) * cap;
+        const pad = (MARK_GAP + (mark.pad ?? 0)) * cap;
         out.push({
           kind: 'mark',
           mark,
@@ -229,7 +232,7 @@ export class Layout {
         marks.push({
           mark: it.mark,
           x: pen + it.shift,
-          top: slot.baseline + it.bottom - it.h,
+          y: slot.baseline + it.bottom - it.h,
           w: it.w,
           h: it.h,
         });

@@ -2,9 +2,10 @@
 export interface MarkPart {
   /** Which traced vector to draw; resolved from assets/punct. */
   svg: string;
+  /** Offset from the mark box's left edge to this part's left edge. */
   dx: number;
-  /** Baseline-relative bottom edge. Negative sits above the baseline. */
-  bottom: number;
+  /** Offset from the baseline to this part's top edge; negative sits above. */
+  dy: number;
   w: number;
   h: number;
   /** Rotation in degrees about the part's own centre; 0 for most marks. */
@@ -14,11 +15,11 @@ export interface MarkPart {
 export interface Mark {
   w: number;
   h: number;
-  /** Baseline-relative bottom edge. Negative sits above the baseline. */
+  /** Offset from the baseline to the mark's bottom edge; negative is above. */
   bottom: number;
   cap: number;
   /** Extra advance as a fraction of cap, so a tall mark clears the letter. */
-  pad: number;
+  pad?: number;
   parts: MarkPart[];
 }
 
@@ -54,7 +55,6 @@ export interface CardConfig {
     family: string;
     weight: number;
     cap_ratio: number;
-    advance_ratio: number;
     word_space: number;
     /** Per-glyph tracking, as a fraction of the em. */
     tracking: number;

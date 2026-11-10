@@ -157,18 +157,17 @@ export class Renderer {
   private paintMarks(ctx: CanvasRenderingContext2D, line: PlacedLine): void {
     for (const placed of line.marks) {
       const scale = placed.w / placed.mark.w;
-      for (let i = 0; i < placed.mark.parts.length; i++) {
-        const part = placed.mark.parts[i]!;
+      for (const part of placed.mark.parts) {
         const img = this.assets.marks.get(part.svg)?.[0];
         if (!img) continue;
-        // each part is positioned from the baseline by its own height; using
-        // the composed mark's total height would push the upper dot upward
-        const py = line.baseline + (part.bottom - part.h) * scale;
+        // each part is placed from its own box, so a stacked mark like `:`
+        // does not drag its upper dot upward with the composed height
         const px = placed.x + part.dx * scale;
+        const py = placed.y + part.dy * scale;
         const pw = part.w * scale;
         const ph = part.h * scale;
         ctx.save();
-        ctx.setTransform(...this.localTransform(placed.x, py));
+        ctx.setTransform(...this.localTransform(placed.x, placed.y));
         if (part.rot !== 0) {
           // rotate about the part's own centre, in card space
           const cx = px + pw / 2;
