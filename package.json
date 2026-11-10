@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun tools/serve.ts",
-    "build": "bun tools/build_site.ts",
+    "build": "bun build --compile --target=browser ./index.html --outdir=dist",
     "typecheck": "bun check"
   },
   "devDependencies": {

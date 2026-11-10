@@ -10,7 +10,7 @@ default:
     @just --list
 
 # Build everything: assets from the source photo, then the site bundle
-build: assets site
+pipeline: assets build
 
 # Run the whole asset pipeline in order
 assets: font plate header config
@@ -36,7 +36,7 @@ typeface:
     {{python}} tools/text_card.py
 
 # Build the single-file site into dist/
-site:
+build:
     bun run build
 
 # Serve with rebuild-on-request on http://localhost:5173
