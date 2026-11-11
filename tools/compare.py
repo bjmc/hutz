@@ -33,6 +33,11 @@ DIFF = ROOT / "preview" / "compare-diff.png"
 # exaggerate a band's height, so the lettering is measured without them
 BANDS = {"H": MEASURED_HEADER, **MEASURED}
 
+# The card's usable rows in card space. The homography maps the quad slightly
+# beyond the printed face, so the first few and last few rows are the dark photo
+# edge rather than card. The top rule sits at 87-89, the border at 481-483.
+RULE_TOP, RULE_BOTTOM = 10, 480
+
 
 def to_card(img):
     src = np.array([QUAD[k] for k in ("TL", "TR", "BR", "BL")], np.float32)
@@ -58,7 +63,10 @@ def ink_box(card, box, name, exclude=()):
     """
     x0, x1 = box["x0"], box["x1"]
     base = box["baseline"]
-    lo, hi = max(0, base - 2 * box["cap"]), min(CARD_H, base + box["cap"])
+    # the card's printed rules bound the lettering; starting outside them would
+    # measure the dark photo edge, which bleeds into the first and last rows
+    lo = max(RULE_TOP, base - 2 * box["cap"])
+    hi = min(RULE_BOTTOM, base + box["cap"])
 
     grey = cv2.cvtColor(card[lo:hi, max(0, x0 - 12):min(CARD_W, x1 + 12)],
                         cv2.COLOR_BGR2GRAY)
@@ -72,7 +80,9 @@ def ink_box(card, box, name, exclude=()):
 
     # a printed rule runs most of the card's width; stop growth there, or the
     # header's ink run swallows the top rule a few rows under its baseline
-    wide = ink.sum(axis=1) > 0.6 * CARD_W
+    full = cv2.cvtColor(card[lo:hi], cv2.COLOR_BGR2GRAY) < 130
+    wide = (full & ~np.any([e[lo:hi] for e in exclude], axis=0)).sum(axis=1) \
+        > 0.6 * CARD_W
 
     def limit(start, step, edge):
         y, blank = start, 0
@@ -103,6 +113,44 @@ def ink_box(card, box, name, exclude=()):
         h=int(ys.max() - ys.min() + 1),
         area=int(band.sum()),
     )
+
+
+def signed_diff(original, render):
+    """Colour the two images against each other instead of a grey magnitude.
+
+    Greyscale difference cannot say *which* image a pixel came from, so a
+    systematic offset looks the same as random noise. Here each image owns one
+    colour channel: ink in the print darkens green, ink in the render darkens
+    red and blue. That way
+
+      paper       -> white
+      both inked  -> black
+      print only  -> magenta (its channel is the one still lit)
+      render only -> green
+
+    Only the text region is returned. The rules, the scales logo and the
+    photograph's dark border are identical in both images by construction, so
+    they always agree and say nothing about the lettering.
+    """
+    def darkness(img):
+        grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
+        # 0 on bare paper, 1 on solid ink
+        return np.clip((210 - grey) / 170, 0, 1)
+
+    dark_o = darkness(original)
+    dark_r = darkness(render)
+
+    out = np.empty_like(original)
+    out[..., 0] = 255 * (1 - dark_r)   # B
+    out[..., 1] = 255 * (1 - dark_o)   # G
+    out[..., 2] = 255 * (1 - dark_r)   # R
+
+    y0 = max(RULE_TOP, min(b["baseline"] - 2 * b["cap"] for b in BANDS.values()))
+    y1 = min(RULE_BOTTOM, max(b["baseline"] + b["cap"] + 8
+                              for b in BANDS.values()))
+    x0 = max(0, min(b["x0"] for b in BANDS.values()) - 20)
+    x1 = min(CARD_W, max(b["x1"] for b in BANDS.values()) + 20)
+    return out[y0:y1, x0:x1]
 
 
 def report(original, render, name):
@@ -138,14 +186,16 @@ def main(argv):
         report(ink_box(original, box, name, [ro]),
                ink_box(render, box, name, [rr]), name)
 
-    # whole-card agreement, and a diff image for the eye
+    # whole-card agreement, and a signed diff image for the eye
     diff = cv2.absdiff(original, render)
     print(f"\n  mean abs difference: {diff.mean():.2f}/255")
 
     DIFF.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(DIFF), cv2.resize(diff, None, fx=2, fy=2,
+    cv2.imwrite(str(DIFF), cv2.resize(signed_diff(original, render),
+                                      None, fx=2, fy=2,
                                       interpolation=cv2.INTER_NEAREST))
-    print(f"  wrote {DIFF}")
+    print(f"  wrote {DIFF}  (magenta = only in the print, "
+          f"green = only in the render)")
 
 
 if __name__ == "__main__":
