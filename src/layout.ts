@@ -184,7 +184,10 @@ export class Layout {
     const natural = this.span(body, track);
     const lead = body[0];
     const offset = lead !== undefined && lead.kind === 'glyph' ? lead.left : 0;
-    const start = (box.x0 + box.x1) / 2 - natural / 2 - offset;
+    // centre the run's ink in the field's box, then apply this line's nudge:
+    // the box is shared so wrapped lines reflow together, the nudge is not
+    const start =
+      (box.x0 + box.x1) / 2 - natural / 2 - offset + (slot.nudge ?? 0);
 
     const glyphs: PlacedGlyph[] = [];
     const marks: PlacedMark[] = [];
@@ -340,7 +343,10 @@ export class Layout {
     slot: LineSlot,
     box: Box,
   ): boolean {
-    const placed = this.place(text, slot, box);
+    // the nudge is a cosmetic shift applied after fitting; if it took part in
+    // this test the box would grow to accommodate it, which would then move
+    // the centred run back the other way
+    const placed = this.place(text, { ...slot, nudge: 0 }, box);
     const card = this.cfg.fields[slot.field];
     return (
       placed.left >= box.x0 - 1 &&

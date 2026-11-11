@@ -64,8 +64,9 @@ export const CONFIG: CardConfig = {
       "x1": 353,
       "baseline": 173,
       "size": 40.87,
-      "letter_space": -0.03,
-      "word_space": 0.6
+      "letter_space": -0.012,
+      "word_space": 0.66,
+      "nudge": -9
     },
     {
       "band": "B",

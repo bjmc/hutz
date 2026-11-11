@@ -36,6 +36,12 @@ export interface LineSlot {
   letter_space: number;
   /** Width of a word space, as a multiple of the font size. */
   word_space: number;
+  /**
+   * Horizontal shift in card pixels, applied after centring. The field keeps
+   * one justification box so wrapped lines reflow together; this nudges a
+   * single line without changing what the field fits in.
+   */
+  nudge?: number;
 }
 
 /**
