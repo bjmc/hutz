@@ -64,8 +64,8 @@ export const CONFIG: CardConfig = {
       "x1": 353,
       "baseline": 173,
       "size": 40.87,
-      "letter_space": -0.05,
-      "word_space": 1.0
+      "letter_space": -0.03,
+      "word_space": 0.6
     },
     {
       "band": "B",
@@ -75,7 +75,7 @@ export const CONFIG: CardConfig = {
       "baseline": 218,
       "size": 40.87,
       "letter_space": -0.05,
-      "word_space": 1.0
+      "word_space": 0.8
     },
     {
       "band": "C",
@@ -84,7 +84,7 @@ export const CONFIG: CardConfig = {
       "x1": 443,
       "baseline": 304,
       "size": 40.87,
-      "letter_space": -0.05,
+      "letter_space": -0.072,
       "word_space": 1.0
     }
   ],
