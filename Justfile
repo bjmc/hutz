@@ -1,8 +1,8 @@
 # Asset build and site tasks for the Hutz meme card.
 #
-# The site itself needs no Python: every generated asset and src/config.ts are
-# committed, and `just build` is enough. The recipes below re-derive those
-# assets from assets/source/original.jpg, which is a one-off authoring task.
+# `src/config.ts` is hand-maintained and every asset is committed, so the site
+# needs only `just build`. The `plate` and `header` recipes re-derive the
+# committed images from assets/source/original.jpg if that is ever needed.
 
 python := ".venv/bin/python"
 
@@ -10,15 +10,11 @@ python := ".venv/bin/python"
 default:
     @just --list
 
-# Re-derive every committed asset from the source photo, then build the site
+# Re-derive the committed assets from the source photo, then build the site
 pipeline: assets build
 
-# Run the whole asset pipeline in order
-assets: font plate header config
-
-# Stage 0: vendor the card typeface as a static subsetted woff2
-font:
-    {{python}} tools/vendor_font.py
+# Run the asset pipeline in order
+assets: plate header
 
 # Stage 1: trace punctuation and remove the handwriting from the source photo
 plate:
@@ -27,10 +23,6 @@ plate:
 # Stage 2: erase the printed name and cut the finger mask
 header:
     {{python}} tools/make_header_assets.py
-
-# Stage 3: emit src/config.ts from the measured geometry
-config:
-    {{python}} tools/gen_config.py
 
 # Build the single-file site into dist/
 build:

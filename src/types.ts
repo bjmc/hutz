@@ -17,8 +17,9 @@ export interface Mark {
   h: number;
   /** Offset from the baseline to the mark's bottom edge, in card pixels. */
   bottom: number;
-  cap: number;
-  /** Extra advance as a fraction of cap, so a tall mark clears the letter. */
+  /** Font size the mark was traced at; the renderer scales from this. */
+  size: number;
+  /** Extra advance as a fraction of size, so a tall mark clears the letter. */
   pad?: number;
   parts: MarkPart[];
 }
@@ -29,7 +30,8 @@ export interface LineSlot {
   x0: number;
   x1: number;
   baseline: number;
-  cap: number;
+  /** Font size in card pixels; the letters are drawn at exactly this size. */
+  size: number;
 }
 
 /**
@@ -54,7 +56,6 @@ export interface CardConfig {
   font: {
     family: string;
     weight: number;
-    cap_ratio: number;
     word_space: number;
     /** Per-glyph tracking, as a fraction of the em. */
     tracking: number;

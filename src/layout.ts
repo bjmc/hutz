@@ -52,12 +52,9 @@ interface Box {
   x1: number;
 }
 
-const MARK_GAP = 0.06;      // of cap, between the last letter and its edit mark
-const PROBE = 1000;         // font size used to read the font's own metrics
+const MARK_GAP = 0.06;      // of size, between the last letter and its edit mark
 
 export class Layout {
-  private ratio: number | null = null;
-
   constructor(
     private ctx: CanvasRenderingContext2D,
     private cfg: CardConfig,
@@ -68,22 +65,8 @@ export class Layout {
       `${this.cfg.font.weight} ${size}px ${this.cfg.font.family}`;
   }
 
-  /** Cap height as a fraction of font size, read from the loaded font. */
-  private capRatio(): number {
-    if (this.ratio !== null) return this.ratio;
-    this.fontAt(PROBE);
-    const m = this.ctx.measureText('H');
-    const ratio = (m.actualBoundingBoxAscent + m.actualBoundingBoxDescent) / PROBE;
-    this.ratio = ratio > 0 ? ratio : this.cfg.font.cap_ratio;
-    return this.ratio;
-  }
-
-  private sizeFor(cap: number): number {
-    return cap / this.capRatio();
-  }
-
-  private items(text: string, cap: number): Item[] {
-    this.fontAt(this.sizeFor(cap));
+  private items(text: string, size: number): Item[] {
+    this.fontAt(size);
     const out: Item[] = [];
     let swallowSpace = false;
     // the immediately preceding letter, when nothing separates the two: that is
@@ -96,9 +79,9 @@ export class Layout {
 
       const mark = this.cfg.marks[ch];
       if (mark) {
-        const scale = cap / mark.cap;
+        const scale = size / mark.size;
         const w = mark.w * scale;
-        const pad = (MARK_GAP + (mark.pad ?? 0)) * cap;
+        const pad = (MARK_GAP + (mark.pad ?? 0)) * size;
         out.push({
           kind: 'mark',
           mark,
@@ -114,7 +97,7 @@ export class Layout {
       }
 
       if (ch === ' ') {
-        out.push({ kind: 'space', advance: this.cfg.font.word_space * cap });
+        out.push({ kind: 'space', advance: this.cfg.font.word_space * size });
         prev = null;
         continue;
       }
@@ -170,9 +153,9 @@ export class Layout {
     return seen ? last - first : 0;
   }
 
-  /** Per-glyph tracking in px at a given cap height. */
-  private trackFor(cap: number): number {
-    return this.cfg.font.tracking * (cap / this.capRatio());
+  /** Per-glyph tracking in px at a given font size. */
+  private trackFor(size: number): number {
+    return this.cfg.font.tracking * size;
   }
 
   /** Index just past the last glyph; items beyond it are trailing edit marks. */
@@ -186,13 +169,12 @@ export class Layout {
 
   private place(
     text: string,
-    cap: number,
+    size: number,
     slot: { baseline: number; field: 'header' | 'top' | 'bottom' },
     box: Box,
   ): FittedLine {
-    const all = this.items(text, cap);
-    const size = this.sizeFor(cap);
-    const track = this.trackFor(cap);
+    const all = this.items(text, size);
+    const track = this.trackFor(size);
 
     // trailing marks hang past the text, so they take no part in centring
     const lastGlyph = this.lastGlyphIndex(all);
@@ -259,8 +241,8 @@ export class Layout {
     return this.cfg.lines.filter(l => l.field === field);
   }
 
-  private capFor(field: 'header' | 'top' | 'bottom'): number {
-    return this.slots(field)[0]?.cap ?? 0;
+  private sizeFor(field: 'header' | 'top' | 'bottom'): number {
+    return this.slots(field)[0]?.size ?? 0;
   }
 
   /** Debug hook: natural width of a run before any centring. */
@@ -268,7 +250,7 @@ export class Layout {
     const slots = this.slots(field);
     const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
     return slots.map(s =>
-      this.span(this.items(text, s.cap), this.trackFor(s.cap)),
+      this.span(this.items(text, s.size), this.trackFor(s.size)),
     );
   }
 
@@ -362,7 +344,7 @@ export class Layout {
     slot: { baseline: number; field: 'header' | 'top' | 'bottom' },
     box: Box,
   ): boolean {
-    const placed = this.place(text, this.capFor(slot.field), slot, box);
+    const placed = this.place(text, this.sizeFor(slot.field), slot, box);
     const card = this.cfg.fields[slot.field];
     return (
       placed.left >= box.x0 - 1 &&
@@ -424,7 +406,7 @@ export class Layout {
 
     return lines.map((line, k) => {
       const slot = slots[Math.min(k, slots.length - 1)]!;
-      return this.place(line, slot.cap, slot, box);
+      return this.place(line, slot.size, slot, box);
     });
   }
 }
