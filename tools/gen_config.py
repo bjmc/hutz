@@ -8,10 +8,15 @@ tracking/word-space that reproduce the original line widths.
 import base64
 import json
 import math
+import sys
 from pathlib import Path
 
 import numpy as np
 from PIL import ImageFont
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from geometry import (CARD_H, CARD_W, MEASURED, MEASURED_HEADER,  # noqa: E402
+                      QUAD)
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
@@ -23,32 +28,6 @@ FONT_WEIGHT = 500
 OUT = ROOT / "src" / "config.ts"
 
 LINE_TEXT = {"A": "WORKS ON", "B": "CONTINGENCY", "C": "NO MONEY DOWN"}
-# Measured dark-ink extents and baselines in deskewed space. x1 is the *letter*
-# extent: the red marks are appended after the text and hang past it, so
-# including them here would over-spread the justification. fit_x1 is the card's
-# usable right edge, which is the limit a mark may run out to.
-# The card is photographed with perspective, so the correction is a homography
-# fitted to the four printed border rules (see tools/fit_borders.py). A pure
-# rotation cannot square the card: it levels the top/bottom rules but leaves the
-# sides sheared, which makes upright lettering measure as italic.
-QUAD = {
-    "TL": (245.29709, 178.12656),
-    "TR": (764.42084, 72.32128),
-    "BR": (789.44867, 554.71550),
-    "BL": (265.98930, 663.23865),
-}
-CARD_W, CARD_H = 530, 484     # the rectangle the quad maps onto
-
-MEASURED = {
-    "A": dict(x0=124, x1=353, baseline=173, cap=27),
-    "B": dict(x0=107, x1=391, baseline=218, cap=28),
-    "C": dict(x0=74, x1=443, baseline=304, cap=27),
-}
-# The printed name at the top of the card, in the same card space. It is set
-# larger than the body text: ink runs x 53..470, y 36..79, so the baseline is 79
-# and the cap 41. Bounds come from the ink, not the card edge, because the
-# whole point of the field is to replace a line that was already typeset.
-MEASURED_HEADER = dict(x0=53, x1=470, baseline=79, cap=41)
 # Card corners, in photo pixels, measured once by hand off the photo. These
 # constants are now the source of truth for the drawing bounds: the derived
 # numbers live in src/config.ts under `fields`, so tweak those to adjust the

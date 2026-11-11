@@ -1,7 +1,8 @@
 # Asset build and site tasks for the Hutz meme card.
 #
-# The asset pipeline runs in order, each stage consuming the last one's output:
-#   original.jpg -> cleaned-body.png -> plate.jpg + fingers.png -> config.ts
+# The site itself needs no Python: every generated asset and src/config.ts are
+# committed, and `just build` is enough. The recipes below re-derive those
+# assets from assets/source/original.jpg, which is a one-off authoring task.
 
 python := ".venv/bin/python"
 
@@ -9,7 +10,7 @@ python := ".venv/bin/python"
 default:
     @just --list
 
-# Build everything: assets from the source photo, then the site bundle
+# Re-derive every committed asset from the source photo, then build the site
 pipeline: assets build
 
 # Run the whole asset pipeline in order
@@ -30,10 +31,6 @@ header:
 # Stage 3: emit src/config.ts from the measured geometry
 config:
     {{python}} tools/gen_config.py
-
-# Export the printed lettering in card space, for typeface identification
-typeface:
-    {{python}} tools/text_card.py
 
 # Build the single-file site into dist/
 build:

@@ -1,4 +1,6 @@
-import type { CardConfig, Mark } from './types';
+import type {
+  CardConfig, Mark, PlacedGlyph, PlacedLine, PlacedMark,
+} from './types';
 
 interface GlyphItem {
   kind: 'glyph';
@@ -29,32 +31,18 @@ interface MarkItem {
 
 type Item = GlyphItem | SpaceItem | MarkItem;
 
-export interface PlacedGlyph {
-  ch: string;
-  x: number;
-}
-
-export interface PlacedMark {
-  mark: Mark;
-  /** Left edge of the mark's box, in card space. */
-  x: number;
-  /** Top edge of the mark's box, in card space. */
-  y: number;
-  w: number;
-  h: number;
-}
-
-export interface PlacedLine {
-  field: 'header' | 'top' | 'bottom';
-  glyphs: PlacedGlyph[];
-  marks: PlacedMark[];
-  size: number;
-  baseline: number;
+/**
+ * A placed line plus the ink extents the fitter needs.
+ *
+ * The extents are scratch data for deciding whether a run fits; they never
+ * reach the renderer, so they are kept out of `PlacedLine`.
+ */
+interface FittedLine extends PlacedLine {
   /** Leftmost ink of the letters, in card space. */
   left: number;
   /** Rightmost ink of the letters, in card space. */
   right: number;
-  /** Rightmost ink including the marks that hang past the last letter. */
+  /** Rightmost ink including marks hanging past the last letter. */
   markRight: number;
 }
 
@@ -201,7 +189,7 @@ export class Layout {
     cap: number,
     slot: { baseline: number; field: 'header' | 'top' | 'bottom' },
     box: Box,
-  ): PlacedLine {
+  ): FittedLine {
     const all = this.items(text, cap);
     const size = this.sizeFor(cap);
     const track = this.trackFor(cap);
@@ -234,7 +222,6 @@ export class Layout {
           x: pen + it.shift,
           y: slot.baseline + it.drop - it.h,
           w: it.w,
-          h: it.h,
         });
         markRight = Math.max(markRight, pen + it.shift + it.w);
       }
@@ -258,7 +245,6 @@ export class Layout {
 
     const glyphRight = Number.isFinite(inkRight) ? inkRight : start;
     return {
-      field: slot.field,
       glyphs,
       marks,
       size,

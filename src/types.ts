@@ -71,6 +71,30 @@ export interface CardState {
   bottom: string;
 }
 
+/** A glyph ready to draw: its character and its pen position in card space. */
+export interface PlacedGlyph {
+  ch: string;
+  x: number;
+}
+
+/** A mark ready to draw: where its box lands, in card space. */
+export interface PlacedMark {
+  mark: Mark;
+  /** Left edge of the mark's box. */
+  x: number;
+  /** Top edge of the mark's box. */
+  y: number;
+  w: number;
+}
+
+/** One typeset line, as handed from layout to the renderer. */
+export interface PlacedLine {
+  glyphs: PlacedGlyph[];
+  marks: PlacedMark[];
+  size: number;
+  baseline: number;
+}
+
 export interface Assets {
   plate: HTMLImageElement;
   /** Matte of the cartoon hand, drawn over the header so it occludes it. */

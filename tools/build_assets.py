@@ -23,7 +23,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from clean_and_segment import (ROI, SRC, find_angle, ink_from,  # noqa: E402
                                remove_rules)
-from gen_config import CARD_H, CARD_W, MEASURED, QUAD  # noqa: E402
+from geometry import CARD_H, CARD_W, MEASURED, QUAD  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "punct"

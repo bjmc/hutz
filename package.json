@@ -8,5 +8,6 @@
     "typecheck": "bun check"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.1.0"
   }
 }

@@ -16,7 +16,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from gen_config import CARD_H, CARD_W, QUAD
+from geometry import CARD_H, CARD_W, QUAD
 
 ROOT = Path(__file__).resolve().parent.parent
 CARD = ROOT / "assets" / "card"

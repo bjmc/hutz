@@ -1,5 +1,6 @@
-import type { Assets, CardConfig, CardState } from './types';
-import type { PlacedLine } from './layout';
+import type {
+  Assets, CardConfig, CardState, PlacedLine,
+} from './types';
 import { Layout } from './layout';
 
 export class Renderer {
