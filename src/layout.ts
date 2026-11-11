@@ -1,5 +1,5 @@
 import type {
-  CardConfig, Mark, PlacedGlyph, PlacedLine, PlacedMark,
+  CardConfig, LineSlot, Mark, PlacedGlyph, PlacedLine, PlacedMark,
 } from './types';
 
 interface GlyphItem {
@@ -65,7 +65,7 @@ export class Layout {
       `${this.cfg.font.weight} ${size}px ${this.cfg.font.family}`;
   }
 
-  private items(text: string, size: number): Item[] {
+  private items(text: string, size: number, wordSpace: number): Item[] {
     this.fontAt(size);
     const out: Item[] = [];
     let swallowSpace = false;
@@ -97,7 +97,7 @@ export class Layout {
       }
 
       if (ch === ' ') {
-        out.push({ kind: 'space', advance: this.cfg.font.word_space * size });
+        out.push({ kind: 'space', advance: wordSpace * size });
         prev = null;
         continue;
       }
@@ -153,9 +153,9 @@ export class Layout {
     return seen ? last - first : 0;
   }
 
-  /** Per-glyph tracking in px at a given font size. */
-  private trackFor(size: number): number {
-    return this.cfg.font.tracking * size;
+  /** Per-glyph letter spacing in px at a given font size. */
+  private trackFor(size: number, letterSpace: number): number {
+    return letterSpace * size;
   }
 
   /** Index just past the last glyph; items beyond it are trailing edit marks. */
@@ -169,12 +169,11 @@ export class Layout {
 
   private place(
     text: string,
-    size: number,
-    slot: { baseline: number; field: 'header' | 'top' | 'bottom' },
+    slot: LineSlot,
     box: Box,
   ): FittedLine {
-    const all = this.items(text, size);
-    const track = this.trackFor(size);
+    const all = this.items(text, slot.size, slot.word_space);
+    const track = this.trackFor(slot.size, slot.letter_space);
 
     // trailing marks hang past the text, so they take no part in centring
     const lastGlyph = this.lastGlyphIndex(all);
@@ -229,7 +228,7 @@ export class Layout {
     return {
       glyphs,
       marks,
-      size,
+      size: slot.size,
       baseline: slot.baseline,
       left: Number.isFinite(inkLeft) ? inkLeft : start,
       right: glyphRight,
@@ -241,16 +240,13 @@ export class Layout {
     return this.cfg.lines.filter(l => l.field === field);
   }
 
-  private sizeFor(field: 'header' | 'top' | 'bottom'): number {
-    return this.slots(field)[0]?.size ?? 0;
-  }
-
   /** Debug hook: natural width of a run before any centring. */
   measure(raw: string, field: 'header' | 'top' | 'bottom'): number[] {
     const slots = this.slots(field);
     const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
     return slots.map(s =>
-      this.span(this.items(text, s.size), this.trackFor(s.size)),
+      this.span(this.items(text, s.size, s.word_space),
+        this.trackFor(s.size, s.letter_space)),
     );
   }
 
@@ -341,10 +337,10 @@ export class Layout {
    */
   private fitsRun(
     text: string,
-    slot: { baseline: number; field: 'header' | 'top' | 'bottom' },
+    slot: LineSlot,
     box: Box,
   ): boolean {
-    const placed = this.place(text, this.sizeFor(slot.field), slot, box);
+    const placed = this.place(text, slot, box);
     const card = this.cfg.fields[slot.field];
     return (
       placed.left >= box.x0 - 1 &&
@@ -406,7 +402,7 @@ export class Layout {
 
     return lines.map((line, k) => {
       const slot = slots[Math.min(k, slots.length - 1)]!;
-      return this.place(line, slot.size, slot, box);
+      return this.place(line, slot, box);
     });
   }
 }

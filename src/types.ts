@@ -32,6 +32,10 @@ export interface LineSlot {
   baseline: number;
   /** Font size in card pixels; the letters are drawn at exactly this size. */
   size: number;
+  /** Extra gap after every glyph, as a fraction of the em. Negative tightens. */
+  letter_space: number;
+  /** Width of a word space, as a multiple of the font size. */
+  word_space: number;
 }
 
 /**
@@ -56,9 +60,6 @@ export interface CardConfig {
   font: {
     family: string;
     weight: number;
-    word_space: number;
-    /** Per-glyph tracking, as a fraction of the em. */
-    tracking: number;
   };
   lines: LineSlot[];
   fields: { header: FieldBounds; top: FieldBounds; bottom: FieldBounds };

@@ -44,9 +44,7 @@ export const CONFIG: CardConfig = {
   },
   "font": {
     "family": "CardFont",
-    "weight": 500,
-    "word_space": 1.0,
-    "tracking": -0.05
+    "weight": 500
   },
   "lines": [
     {
@@ -55,7 +53,9 @@ export const CONFIG: CardConfig = {
       "x0": 53,
       "x1": 470,
       "baseline": 79,
-      "size": 61.96
+      "size": 61.96,
+      "letter_space": -0.03,
+      "word_space": 0.6
     },
     {
       "band": "A",
@@ -63,7 +63,9 @@ export const CONFIG: CardConfig = {
       "x0": 124,
       "x1": 353,
       "baseline": 173,
-      "size": 40.87
+      "size": 40.87,
+      "letter_space": -0.05,
+      "word_space": 1.0
     },
     {
       "band": "B",
@@ -71,7 +73,9 @@ export const CONFIG: CardConfig = {
       "x0": 107,
       "x1": 391,
       "baseline": 218,
-      "size": 40.87
+      "size": 40.87,
+      "letter_space": -0.05,
+      "word_space": 1.0
     },
     {
       "band": "C",
@@ -79,7 +83,9 @@ export const CONFIG: CardConfig = {
       "x0": 74,
       "x1": 443,
       "baseline": 304,
-      "size": 40.87
+      "size": 40.87,
+      "letter_space": -0.05,
+      "word_space": 1.0
     }
   ],
   "fields": {
