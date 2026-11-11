@@ -27,8 +27,6 @@ export interface Mark {
 export interface LineSlot {
   band: string;
   field: 'header' | 'top' | 'bottom';
-  x0: number;
-  x1: number;
   baseline: number;
   /** Font size in card pixels; the letters are drawn at exactly this size. */
   size: number;

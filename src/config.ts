@@ -50,8 +50,6 @@ export const CONFIG: CardConfig = {
     {
       "band": "H",
       "field": "header",
-      "x0": 53,
-      "x1": 470,
       "baseline": 79,
       "size": 61.96,
       "letter_space": -0.03,
@@ -60,8 +58,6 @@ export const CONFIG: CardConfig = {
     {
       "band": "A",
       "field": "top",
-      "x0": 124,
-      "x1": 353,
       "baseline": 173,
       "size": 40.87,
       "letter_space": -0.012,
@@ -71,8 +67,6 @@ export const CONFIG: CardConfig = {
     {
       "band": "B",
       "field": "top",
-      "x0": 107,
-      "x1": 391,
       "baseline": 218,
       "size": 40.87,
       "letter_space": -0.05,
@@ -81,8 +75,6 @@ export const CONFIG: CardConfig = {
     {
       "band": "C",
       "field": "bottom",
-      "x0": 74,
-      "x1": 443,
       "baseline": 304,
       "size": 40.87,
       "letter_space": -0.072,
