@@ -30,26 +30,13 @@ export function invert3x3(m: readonly number[]): number[] {
   ];
 }
 
-/** Apply a row-major 3x3 homography to a point, dividing through by w. */
-export function project(
-  m: readonly number[],
-  x: number,
-  y: number,
-): [number, number] {
-  const w = m[6]! * x + m[7]! * y + m[8]!;
-  return [
-    (m[0]! * x + m[1]! * y + m[2]!) / w,
-    (m[3]! * x + m[4]! * y + m[5]!) / w,
-  ];
-}
-
 /**
  * The affine that best approximates `inv` at a point, as a canvas transform.
  *
  * `inv` must map card space to photo space. The result places a glyph so its
  * origin lands on the projected point and its axes follow the local derivative,
  * which is what makes upright card lettering appear correctly foreshortened on
- * the photograph.
+ * the photograph. The canvas applies it; see the module comment.
  */
 export function localTransform(
   inv: readonly number[],
@@ -66,13 +53,4 @@ export function localTransform(
   const b = (inv[3]! - v * inv[6]!) / w;
   const d = (inv[4]! - v * inv[7]!) / w;
   return [a, b, c, d, u - a * x - c * y, v - b * x - d * y];
-}
-
-/** Apply a canvas transform to a point. */
-export function applyTransform(
-  t: readonly [number, number, number, number, number, number],
-  x: number,
-  y: number,
-): [number, number] {
-  return [t[0] * x + t[2] * y + t[4], t[1] * x + t[3] * y + t[5]];
 }

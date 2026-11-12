@@ -1,9 +1,38 @@
 import { describe, expect, test } from 'bun:test';
 
-import {
-  applyTransform, invert3x3, localTransform, project,
-} from '../src/projection';
+import { invert3x3, localTransform } from '../src/projection';
 import { CONFIG } from '../src/config';
+
+/**
+ * Test-side reference implementations.
+ *
+ * The app only ever needs the local affine that Canvas applies, so neither of
+ * these is shipped. They live here to state what that affine *means*: `project`
+ * is the projective map `localTransform` must agree with, and `applyTransform`
+ * evaluates a canvas transform so a test can ask where it puts a point.
+ */
+
+/** Apply a row-major 3x3 homography to a point, dividing through by w. */
+function project(
+  m: readonly number[],
+  x: number,
+  y: number,
+): [number, number] {
+  const w = m[6]! * x + m[7]! * y + m[8]!;
+  return [
+    (m[0]! * x + m[1]! * y + m[2]!) / w,
+    (m[3]! * x + m[4]! * y + m[5]!) / w,
+  ];
+}
+
+/** Apply a canvas transform to a point. */
+function applyTransform(
+  t: readonly [number, number, number, number, number, number],
+  x: number,
+  y: number,
+): [number, number] {
+  return [t[0] * x + t[2] * y + t[4], t[1] * x + t[3] * y + t[5]];
+}
 
 const IDENTITY = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 
