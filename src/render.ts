@@ -1,5 +1,5 @@
 import type {
-  Assets, CardConfig, CardState, PlacedLine,
+  Assets, CardConfig, CardState, Field, PlacedLine,
 } from './types';
 import { Layout } from './layout';
 import { invert3x3, localTransform } from './projection';
@@ -22,7 +22,7 @@ export class Renderer {
   }
 
   /** Longest prefix of `text` that still fits its field. */
-  clamp(text: string, field: 'header' | 'top' | 'bottom'): string {
+  clamp(text: string, field: Field): string {
     return this.layout.clamp(text, field);
   }
 

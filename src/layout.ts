@@ -1,5 +1,5 @@
 import type {
-  CardConfig, LineSlot, Mark, PlacedGlyph, PlacedLine, PlacedMark,
+  CardConfig, Field, LineSlot, Mark, PlacedGlyph, PlacedLine, PlacedMark,
 } from './types';
 
 interface GlyphItem {
@@ -239,12 +239,12 @@ export class Layout {
     };
   }
 
-  private slots(field: 'header' | 'top' | 'bottom') {
+  private slots(field: Field) {
     return this.cfg.lines.filter(l => l.field === field);
   }
 
   /** Debug hook: natural width of a run before any centring. */
-  measure(raw: string, field: 'header' | 'top' | 'bottom'): number[] {
+  measure(raw: string, field: Field): number[] {
     const slots = this.slots(field);
     const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
     return slots.map(s =>
@@ -264,7 +264,7 @@ export class Layout {
    */
   private wrap(
     words: string[],
-    field: 'header' | 'top' | 'bottom',
+    field: Field,
   ): { lines: string[]; overflow: boolean; box: Box } {
     const base = this.boxAt(field, 0);
     const first = this.wrapAt(words, field, base);
@@ -290,7 +290,7 @@ export class Layout {
   }
 
   /** The field's box at growth `t`: 0 = original, 1 = the printed card. */
-  private boxAt(field: 'header' | 'top' | 'bottom', t: number): Box {
+  private boxAt(field: Field, t: number): Box {
     const f = this.cfg.fields[field];
     const x0 = f.center - f.half;
     const x1 = f.center + f.half;
@@ -302,7 +302,7 @@ export class Layout {
 
   private wrapAt(
     words: string[],
-    field: 'header' | 'top' | 'bottom',
+    field: Field,
     box: Box,
   ): { lines: string[]; overflow: boolean } {
     const slots = this.slots(field);
@@ -356,7 +356,7 @@ export class Layout {
   }
 
   /** True when `raw` fits its field at full size. The UI rejects input if not. */
-  fits(raw: string, field: 'header' | 'top' | 'bottom'): boolean {
+  fits(raw: string, field: Field): boolean {
     const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
     if (!text) return true;
     if (!this.slots(field).length) return false;
@@ -370,7 +370,7 @@ export class Layout {
    * character by character. That way a long run of letters cannot spill off
    * the card even though it has no spaces to wrap on.
    */
-  clamp(raw: string, field: 'header' | 'top' | 'bottom'): string {
+  clamp(raw: string, field: Field): string {
     const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
     if (this.fits(text, field)) return text;
 
@@ -397,7 +397,7 @@ export class Layout {
   }
 
   /** Lay out one field's text at its measured size, wrapping across slots. */
-  build(raw: string, field: 'header' | 'top' | 'bottom'): PlacedLine[] {
+  build(raw: string, field: Field): PlacedLine[] {
     const slots = this.slots(field);
     if (!slots.length) return [];
 

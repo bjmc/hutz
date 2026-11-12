@@ -24,9 +24,12 @@ export interface Mark {
   parts: MarkPart[];
 }
 
+/** The three editable lines of the card. */
+export type Field = 'header' | 'top' | 'bottom';
+
 export interface LineSlot {
   band: string;
-  field: 'header' | 'top' | 'bottom';
+  field: Field;
   baseline: number;
   /** Font size in card pixels; the letters are drawn at exactly this size. */
   size: number;

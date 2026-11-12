@@ -19,6 +19,12 @@ export const DEFAULTS: CardState = {
   bottom: 'NO, MONEY DOWN!',
 };
 
+/** What a saved card is called, and the title offered when sharing it. */
+export const EXPORT = {
+  filename: 'money-down.jpg',
+  title: 'Money down',
+};
+
 export const CONFIG: CardConfig = {
   "homography": [
     1.01070542,
