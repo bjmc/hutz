@@ -1,8 +1,9 @@
 /**
- * The card-to-photo projection, as pure functions.
+ * The card-to-image projection, as pure functions.
  *
- * The card is described in a flat rectangle (530x484) but drawn on a photograph
- * of a card held at an angle. A homography maps card points to photo pixels.
+ * The card is described in a flat rectangle (530x484) but drawn on a screencap
+ * of the cartoon, where it sits at an angle. A homography maps card points to
+ * pixels in that image.
  *
  * Canvas2D cannot apply a projective matrix -- `setTransform` takes 3x2 and
  * silently drops the perspective terms. So each glyph is placed with the exact
@@ -33,10 +34,10 @@ export function invert3x3(m: readonly number[]): number[] {
 /**
  * The affine that best approximates `inv` at a point, as a canvas transform.
  *
- * `inv` must map card space to photo space. The result places a glyph so its
+ * `inv` must map card space to image space. The result places a glyph so its
  * origin lands on the projected point and its axes follow the local derivative,
  * which is what makes upright card lettering appear correctly foreshortened on
- * the photograph. The canvas applies it; see the module comment.
+ * the screencap. The canvas applies it; see the module comment.
  */
 export function localTransform(
   inv: readonly number[],

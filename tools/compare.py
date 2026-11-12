@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare a rendered card against the source photograph.
+"""Compare a rendered card against the source image.
 
 The app's loop is config -> render -> compare against `original.jpg`, so this
 reports what the numbers in `src/config.ts` actually produce. Export a card
@@ -8,7 +8,7 @@ from the app (the Download button), then:
     just compare                     # preview/money-down.jpg vs original.jpg
     just compare path/to/export.jpg
 
-Both images are 960x720 photo space, so they are warped through the same
+Both images are 960x720 image space, so they are warped through the same
 homography and measured on the card plane, where the text is upright.
 
 For each band it reports the lettering's ink box and the cap height of the
@@ -34,7 +34,7 @@ DIFF = ROOT / "preview" / "compare-diff.png"
 BANDS = {"H": MEASURED_HEADER, **MEASURED}
 
 # The card's usable rows in card space. The homography maps the quad slightly
-# beyond the printed face, so the first few and last few rows are the dark photo
+# beyond the printed face, so the first few and last few rows are the dark image
 # edge rather than card. The top rule sits at 87-89, the border at 481-483.
 RULE_TOP, RULE_BOTTOM = 10, 480
 
@@ -64,7 +64,7 @@ def ink_box(card, box, name, exclude=()):
     x0, x1 = box["x0"], box["x1"]
     base = box["baseline"]
     # the card's printed rules bound the lettering; starting outside them would
-    # measure the dark photo edge, which bleeds into the first and last rows
+    # measure the dark image edge, which bleeds into the first and last rows
     lo = max(RULE_TOP, base - 2 * box["cap"])
     hi = min(RULE_BOTTOM, base + box["cap"])
 
@@ -129,7 +129,7 @@ def signed_diff(original, render):
       render only -> green
 
     Only the text region is returned. The rules, the scales logo and the
-    photograph's dark border are identical in both images by construction, so
+    source image's dark border are identical in both images by construction, so
     they always agree and say nothing about the lettering.
     """
     def darkness(img):

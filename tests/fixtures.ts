@@ -20,7 +20,7 @@ export function makeConfig(overrides: Partial<CardConfig> = {}): CardConfig {
     source: [960, 720],
     roi: { x: 0, y: 0, w: 960, h: 720 },
     card: [CARD.width, CARD.height],
-    // the identity, so card space and photo space coincide
+    // the identity, so card space and image space coincide
     homography: [1, 0, 0, 0, 1, 0, 0, 0, 1],
     ink: { colour: [25, 11, 10] },
     font: { family: 'CardFont', weight: 500 },

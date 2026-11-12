@@ -54,7 +54,7 @@ export class Renderer {
     ctx.restore();
 
     // The marks are pen on paper, so their colour was already sampled from the
-    // photograph. Multiplying them again would darken that a second time.
+    // screencap. Multiplying them again would darken that a second time.
     const marks = this.textLayer(width, height, lines, true, hand);
     ctx.save();
     if ('filter' in ctx) ctx.filter = 'blur(0.45px)';
@@ -95,7 +95,7 @@ export class Renderer {
     return layer;
   }
 
-  /** Card space -> photo, i.e. the inverse of the configured homography. */
+  /** Card space -> image, i.e. the inverse of the configured homography. */
   private inverse(): number[] {
     if (this.inv) return this.inv;
     this.inv = invert3x3(this.cfg.homography);

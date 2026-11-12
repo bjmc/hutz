@@ -62,7 +62,7 @@ function handMask(): Uint8Array {
 }
 
 describe('Renderer.draw with the real card', () => {
-  test('renders at the photo size', () => {
+  test('renders at the image size', () => {
     const c = render(STATE);
     expect(c.width).toBe(960);
     expect(c.height).toBe(720);

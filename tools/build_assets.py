@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Stage 1 of the asset build: plate and punctuation, from the source photo.
+"""Stage 1 of the asset build: plate and punctuation, from the source image.
 
 Reads `assets/source/original.jpg` and writes the handwriting-free plate
 (`cleaned-body.png`) plus the red punctuation vectors traced from it.
 
 The plate removes only the handwriting; the card's printed furniture (rule
 lines, scales logo) is left intact. Masking happens in deskewed space, then the
-mask is warped back so the photograph itself is never resampled.
+mask is warped back so the source image itself is never resampled.
 
 Stage 2 (`make_header_assets.py`) then takes `cleaned-body.png` and erases the
 printed name, producing the `plate.jpg` the app ships.

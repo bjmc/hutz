@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Geometry measured from the source photo, for re-deriving the card assets.
+"""Geometry measured from the source image, for re-deriving the card assets.
 
 The app does not use this: `src/config.ts` is hand-maintained and the generated
 assets under `assets/` are committed. These constants exist only so the asset
 pipeline can be re-run against `assets/source/original.jpg`.
 """
 
-# The card is photographed with perspective, so the correction is a homography
-# fitted to the four printed border rules. A pure rotation cannot square the
-# card: it levels the top/bottom rules but leaves the sides sheared, which makes
-# upright lettering measure as italic.
+# The card is seen at an angle in the source image, so the correction is a
+# homography fitted to the four printed border rules. A pure rotation cannot
+# square the card: it levels the top/bottom rules but leaves the sides sheared,
+# which makes upright lettering measure as italic.
 QUAD = {
     "TL": (245.29709, 178.12656),
     "TR": (764.42084, 72.32128),

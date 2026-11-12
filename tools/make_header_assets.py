@@ -47,7 +47,7 @@ GROW = 3           # how far the yellow grows into its drawn outline. This is
                    # touches the hand, and that name is then restored with the
                    # fingers instead of erased.
 DARKEN = 115       # grey level below which a pixel counts as outline
-MIN_BLOB = 400     # smallest yellow blob that is hand, in photo pixels
+MIN_BLOB = 400     # smallest yellow blob that is hand, in image pixels
 
 
 def homographies():
@@ -90,8 +90,8 @@ def paper_patch(card):
     return np.clip(patch, 0, 255).astype(np.uint8)
 
 
-def to_photo(img, inv, size):
-    """Warp card space to photo space, anchored at the origin."""
+def to_image(img, inv, size):
+    """Warp card space to image space, anchored at the origin."""
     return cv2.warpPerspective(img, inv, size, flags=cv2.INTER_LANCZOS4)
 
 
@@ -163,11 +163,11 @@ def main():
     ph, pw = plate.shape[:2]
     H = homographies()
     inv = np.linalg.inv(H)
-    card = to_photo(plate, H, (CARD_W, CARD_H))
+    card = to_image(plate, H, (CARD_W, CARD_H))
 
     hand, full = hand_masks(card)
 
-    # paint the band, then put the photograph's own hand back over it
+    # paint the band, then put the source image's own hand back over it
     erased = card.copy()
     y0, y1 = BAND_Y
     x0, x1 = BAND_X
@@ -180,25 +180,25 @@ def main():
     sub[sel] = paper_patch(card)[sel]
     erased[y0:y1, x0:x1] = sub
 
-    # The hand is restored in photo space, straight from the original, so its
+    # The hand is restored in image space, straight from the original, so its
     # pixels are identical rather than resampled twice. The band edge is faded
     # over a couple of pixels first: a hard cut against the surrounding paper
     # leaves a visible line right across the card. That fade is built from the
     # band rectangle alone -- feathering the combined mask would leave partial
     # alpha around the hand, letting the printed name bleed back through.
     clean = plate.copy()
-    hand_photo = cv2.warpPerspective(hand, inv, (pw, ph),
+    hand_image = cv2.warpPerspective(hand, inv, (pw, ph),
                                      flags=cv2.INTER_NEAREST)
     band = np.zeros((CARD_H, CARD_W), np.uint8)
     band[y0:y1, x0:x1] = 255
-    band_photo = cv2.warpPerspective(band, inv, (pw, ph),
+    band_image = cv2.warpPerspective(band, inv, (pw, ph),
                                      flags=cv2.INTER_LINEAR)
-    band_photo = cv2.GaussianBlur(band_photo, (0, 0), EDGE_FEATHER)
-    alpha = (band_photo.astype(np.float32) / 255.0) * (hand_photo == 0)
-    patched = to_photo(erased, inv, (pw, ph))
+    band_image = cv2.GaussianBlur(band_image, (0, 0), EDGE_FEATHER)
+    alpha = (band_image.astype(np.float32) / 255.0) * (hand_image == 0)
+    patched = to_image(erased, inv, (pw, ph))
     a = alpha[..., None]
     clean = np.clip(plate * (1 - a) + patched * a, 0, 255).astype(np.uint8)
-    clean[hand_photo > 0] = plate[hand_photo > 0]
+    clean[hand_image > 0] = plate[hand_image > 0]
 
     cv2.imwrite(str(CARD / "plate.jpg"), clean,
                 [cv2.IMWRITE_JPEG_QUALITY, 94])
@@ -207,7 +207,7 @@ def main():
     # consults only alpha, so the colour channels carry nothing and are left
     # zeroed -- one long run that compresses to almost nothing.
     fingers = np.zeros((ph, pw, 4), np.uint8)
-    fingers[hand_photo > 0, 3] = 255
+    fingers[hand_image > 0, 3] = 255
     cv2.imwrite(str(CARD / "fingers.png"), fingers,
                 [cv2.IMWRITE_PNG_COMPRESSION, 9])
 
@@ -216,7 +216,7 @@ def main():
         size = ((cols[1] - cols[0]) * scale, (rows[1] - rows[0]) * scale)
         return cv2.resize(c, size, interpolation=cv2.INTER_NEAREST)
 
-    after = to_photo(clean, H, (CARD_W, CARD_H))
+    after = to_image(clean, H, (CARD_W, CARD_H))
     cv2.imwrite(str(DEBUG / "header-before.png"), crop(card))
     cv2.imwrite(str(DEBUG / "header-after.png"), crop(after))
     cv2.imwrite(str(DEBUG / "header-matte.png"),

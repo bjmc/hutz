@@ -54,7 +54,7 @@ export interface FieldBounds {
 }
 
 export interface CardConfig {
-  /** 3x3 row-major homography, photo pixels -> card space. */
+  /** 3x3 row-major homography, image pixels -> card space. */
   homography: number[];
   ink: { colour: [number, number, number] };
   font: {

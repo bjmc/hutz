@@ -1,13 +1,7 @@
-import { CONFIG } from './config';
+import { CONFIG, DEFAULTS } from './config';
 import { markDataUri } from './marks';
 import { Renderer } from './render';
 import type { Assets, CardState } from './types';
-
-const DEFAULTS: CardState = {
-  header: 'LIONEL HUTZ',
-  top: 'WORKS ON CONTINGENCY?',
-  bottom: 'NO, MONEY DOWN!',
-};
 
 function el<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -149,7 +143,7 @@ async function main(): Promise<void> {
     link.download = 'money-down.jpg';
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-    hint.textContent = 'Saved at 960×720.';
+    hint.textContent = 'Saved';
   });
 
   copy.addEventListener('click', async () => {

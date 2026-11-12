@@ -1,13 +1,23 @@
 /**
  * Geometry and typography for the card. This file is the source of truth.
  *
- * It began as output from a Python pipeline that measured the photograph, but
+ * It began as output from a Python pipeline that measured the source image, but
  * that was only ever bootstrapping: the loop now is config -> app -> compare
  * against assets/source/original.jpg, so adjust these numbers directly and look
  * at the result. Coordinates are in card space (530x484); `size` is a canvas
  * font size in card pixels.
  */
-import type { CardConfig } from './types';
+import type { CardConfig, CardState } from './types';
+
+/**
+ * What the card says before the user edits anything, and what a link with no
+ * fragment falls back to. The body lines are the ones printed on the card.
+ */
+export const DEFAULTS: CardState = {
+  header: 'LIONEL HUTZ',
+  top: 'WORKS ON CONTINGENCY?',
+  bottom: 'NO, MONEY DOWN!',
+};
 
 export const CONFIG: CardConfig = {
   "homography": [

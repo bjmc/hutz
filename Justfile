@@ -10,13 +10,13 @@ python := ".venv/bin/python"
 default:
     @just --list
 
-# Re-derive the committed assets from the source photo, then build the site
+# Re-derive the committed assets from the source image, then build the site
 pipeline: assets build
 
 # Run the asset pipeline in order
 assets: plate header
 
-# Stage 1: trace punctuation and remove the handwriting from the source photo
+# Stage 1: trace punctuation and remove the handwriting from the source image
 plate:
     {{python}} tools/build_assets.py
 

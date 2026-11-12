@@ -111,7 +111,7 @@ describe('project', () => {
     expect(y).toBeCloseTo(2, 9);
   });
 
-  test('card corners map inside the photo', () => {
+  test('card corners map inside the image', () => {
     const inv = invert3x3(CONFIG.homography);
     for (const [cx, cy] of [[0, 0], [530, 0], [530, 484], [0, 484]]) {
       const [px, py] = project(inv, cx!, cy!);
