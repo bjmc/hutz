@@ -41,38 +41,39 @@ export class Renderer {
       ...this.layout.build(state.bottom, 'bottom'),
     ];
 
-    // Ink is rasterised once at final resolution into an offscreen layer, then
-    // blurred a touch and multiplied into the photo. Drawing straight onto the
-    // canvas leaves vector-sharp edges that read as a modern overlay on a
-    // soft, JPEG-compressed screencap.
-    const layer = this.textLayer(width, height, lines, false);
+    // The plate already shows the fingers, so the ink must never print over
+    // them. Cutting the hand out of the ink layers leaves the plate's own
+    // fingers visible, which is why no third layer is drawn.
+    const hand = state.header.trim() ? this.assets.fingers : null;
+    const ink = this.textLayer(width, height, lines, false, hand);
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
     ctx.globalAlpha = 0.94;
     if ('filter' in ctx) ctx.filter = 'blur(0.45px)';
-    ctx.drawImage(layer, 0, 0);
+    ctx.drawImage(ink, 0, 0);
     ctx.restore();
 
     // The marks are pen on paper, so their colour was already sampled from the
     // photograph. Multiplying them again would darken that a second time.
-    const marks = this.textLayer(width, height, lines, true);
+    const marks = this.textLayer(width, height, lines, true, hand);
     ctx.save();
     if ('filter' in ctx) ctx.filter = 'blur(0.45px)';
     ctx.drawImage(marks, 0, 0);
     ctx.restore();
-
-    // The plate has no printed name, so the cartoon hand must be laid back over
-    // the header. Its matte is the photograph's own hand, which is why the
-    // fingers keep their drawn outline rather than being inpainted around.
-    if (state.header.trim()) ctx.drawImage(this.assets.fingers, 0, 0);
   }
 
-  /** Paint the text and its edit marks into a transparent offscreen canvas. */
+  /**
+   * Paint the text and its edit marks into a transparent offscreen canvas.
+   *
+   * When `cut` is given, its alpha is punched out of the layer, so nothing is
+   * drawn where the cartoon hand sits.
+   */
   private textLayer(
     width: number,
     height: number,
     lines: PlacedLine[],
     marksOnly: boolean,
+    cut: HTMLImageElement | null,
   ): HTMLCanvasElement {
     if (!this.layer) {
       this.layer = document.createElement('canvas');
@@ -84,6 +85,13 @@ export class Renderer {
     if (!lctx) throw new Error('canvas 2d unavailable');
 
     this.paint(lctx, lines, marksOnly);
+
+    if (cut) {
+      // `destination-out` keeps only pixels the mask is transparent over
+      lctx.globalCompositeOperation = 'destination-out';
+      lctx.drawImage(cut, 0, 0);
+      lctx.globalCompositeOperation = 'source-over';
+    }
     return layer;
   }
 

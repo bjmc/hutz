@@ -4,8 +4,8 @@
 Reads `cleaned-body.png` (stage 1) and writes:
 
 - `plate.jpg` -- the card with the printed name erased;
-- `fingers.png` -- a mask of the cartoon hand, which the app draws over the new
-  text so the fingers occlude it.
+- `fingers.png` -- a mask of the cartoon hand. The app punches its alpha out of
+  the ink layer, so the new text never prints over the printed fingers.
 
 Three things in the header must survive: the printed rule below the name, the
 hand and its drawn outline, and the paper's own shading. The band is therefore
@@ -202,14 +202,12 @@ def main():
 
     cv2.imwrite(str(CARD / "plate.jpg"), clean,
                 [cv2.IMWRITE_JPEG_QUALITY, 94])
-    # Full-size alpha cut-out of the hand, so the app can lay it straight over
-    # the header with `drawImage` and no positioning maths. RGB is kept only
-    # inside the hand and zeroed elsewhere, which costs nothing visually and
-    # keeps the PNG small: the transparent area is one long run of zeros.
+    # Full-size alpha mask of the hand: 255 where the fingers are, 0 elsewhere.
+    # The app punches this out of its ink layer with `destination-out`, which
+    # consults only alpha, so the colour channels carry nothing and are left
+    # zeroed -- one long run that compresses to almost nothing.
     fingers = np.zeros((ph, pw, 4), np.uint8)
-    keep = hand_photo > 0
-    fingers[keep, :3] = plate[keep]
-    fingers[keep, 3] = 255
+    fingers[hand_photo > 0, 3] = 255
     cv2.imwrite(str(CARD / "fingers.png"), fingers,
                 [cv2.IMWRITE_PNG_COMPRESSION, 9])
 

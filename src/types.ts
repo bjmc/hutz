@@ -99,7 +99,7 @@ export interface PlacedLine {
 
 export interface Assets {
   plate: HTMLImageElement;
-  /** Matte of the cartoon hand, drawn over the header so it occludes it. */
+  /** Opaque only over the cartoon hand; used to cut the hand out of the ink. */
   fingers: HTMLImageElement;
   /** Keyed by SVG name; a shape shared by several marks is loaded once. */
   marks: Map<string, HTMLImageElement[]>;

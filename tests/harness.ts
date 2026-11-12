@@ -5,9 +5,12 @@
  * returns a null 2D context. `@napi-rs/canvas` rasterises the actual woff2 we
  * ship, so layout and rendering both run against the real font.
  */
-import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
+import { createCanvas, GlobalFonts, loadImage } from '@napi-rs/canvas';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+
+import { CONFIG } from '../src/config';
+import { markDataUri } from '../src/marks';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -41,6 +44,38 @@ export function realCanvas(
 ): HTMLCanvasElement {
   useRealFont();
   return createCanvas(width, height) as unknown as HTMLCanvasElement;
+}
+
+/** The committed card assets, loaded as the app's <img> elements would be. */
+export async function loadCardAssets(): Promise<{
+  plate: HTMLImageElement;
+  fingers: HTMLImageElement;
+}> {
+  useRealFont();
+  const [plate, fingers] = await Promise.all([
+    loadImage(resolve(ROOT, 'assets/card/plate.jpg')),
+    loadImage(resolve(ROOT, 'assets/card/fingers.png')),
+  ]);
+  return {
+    plate: plate as unknown as HTMLImageElement,
+    fingers: fingers as unknown as HTMLImageElement,
+  };
+}
+
+/** A loaded image for one traced mark vector. */
+export async function loadMark(svg: string): Promise<HTMLImageElement> {
+  useRealFont();
+  return await loadImage(markDataUri(svg)) as unknown as HTMLImageElement;
+}
+
+/** Every mark vector the config refers to, keyed by svg name. */
+export async function loadMarks(): Promise<Map<string, HTMLImageElement[]>> {
+  const names = new Set(
+    Object.values(CONFIG.marks).flatMap(m => m.parts.map(p => p.svg)),
+  );
+  const out = new Map<string, HTMLImageElement[]>();
+  for (const name of names) out.set(name, [await loadMark(name)]);
+  return out;
 }
 
 /**
