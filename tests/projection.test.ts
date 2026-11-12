@@ -96,12 +96,12 @@ describe('project', () => {
 
 describe('localTransform', () => {
   test('the identity yields the identity transform', () => {
-    expect(localTransform(IDENTITY, 0, 0)).toEqual([1, 0, 0, 1, 0, 0]);
+    expectClose(localTransform(IDENTITY, 0, 0), [1, 0, 0, 1, 0, 0]);
   });
 
   test('the origin of a translated map lands on the offset', () => {
     const t = localTransform([1, 0, 10, 0, 1, -4, 0, 0, 1], 0, 0);
-    expect(applyTransform(t, 0, 0)).toEqual([10, -4]);
+    expectClose(applyTransform(t, 0, 0), [10, -4]);
   });
 
   test('the transform places its own point on its projection', () => {
@@ -149,10 +149,10 @@ describe('localTransform', () => {
 
 describe('applyTransform', () => {
   test('composes translation after the linear part', () => {
-    expect(applyTransform([1, 0, 0, 1, 5, 7], 1, 1)).toEqual([6, 8]);
+    expectClose(applyTransform([1, 0, 0, 1, 5, 7], 1, 1), [6, 8]);
   });
 
   test('is the identity for the identity transform', () => {
-    expect(applyTransform([1, 0, 0, 1, 0, 0], 3, -9)).toEqual([3, -9]);
+    expectClose(applyTransform([1, 0, 0, 1, 0, 0], 3, -9), [3, -9]);
   });
 });
