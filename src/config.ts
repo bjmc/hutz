@@ -10,20 +10,6 @@
 import type { CardConfig } from './types';
 
 export const CONFIG: CardConfig = {
-  "source": [
-    960,
-    720
-  ],
-  "roi": {
-    "x": 311,
-    "y": 241,
-    "w": 421,
-    "h": 245
-  },
-  "card": [
-    530,
-    484
-  ],
   "homography": [
     1.01070542,
     -0.04311111,

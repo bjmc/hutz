@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "bun tools/serve.ts",
     "build": "bun build --compile --target=browser ./index.html --outdir=dist",
-    "typecheck": "bun check"
+    "typecheck": "bun check",
+    "test": "bun test tests"
   },
   "devDependencies": {
     "@napi-rs/canvas": "^1.1.0"

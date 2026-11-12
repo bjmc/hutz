@@ -2,6 +2,7 @@ import type {
   Assets, CardConfig, CardState, PlacedLine,
 } from './types';
 import { Layout } from './layout';
+import { invert3x3, localTransform } from './projection';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -89,43 +90,16 @@ export class Renderer {
   /** Card space -> photo, i.e. the inverse of the configured homography. */
   private inverse(): number[] {
     if (this.inv) return this.inv;
-    const [a, b, c, d, e, f, g, h, i] = this.cfg.homography as [
-      number, number, number, number, number, number, number, number, number,
-    ];
-    const A = e * i - f * h;
-    const B = -(d * i - f * g);
-    const C = d * h - e * g;
-    const det = a * A + b * B + c * C;
-    this.inv = [
-      A / det, -(b * i - c * h) / det, (b * f - c * e) / det,
-      B / det, (a * i - c * g) / det, -(a * f - c * d) / det,
-      C / det, -(a * h - b * g) / det, (a * e - b * d) / det,
-    ];
+    this.inv = invert3x3(this.cfg.homography);
     return this.inv;
   }
 
-  /**
-   * Local affine at a card-space point, as a canvas transform.
-   *
-   * Canvas2D flattens projective matrices (m14 is dropped), so the homography
-   * cannot be set directly. Over one glyph the mapping is near-affine, so the
-   * exact Jacobian is used instead: the pen lands on the mapped point and the
-   * glyph is sheared by however the projection scales it locally.
-   */
+  /** Local affine at a card-space point, as a canvas transform. */
   private localTransform(
     x: number,
     y: number,
   ): [number, number, number, number, number, number] {
-    const h = this.inverse();
-    const w = h[6]! * x + h[7]! * y + h[8]!;
-    const u = (h[0]! * x + h[1]! * y + h[2]!) / w;
-    const v = (h[3]! * x + h[4]! * y + h[5]!) / w;
-    // analytic Jacobian of the projective map at this point
-    const a = (h[0]! - u * h[6]!) / w;
-    const c = (h[1]! - u * h[7]!) / w;
-    const b = (h[3]! - v * h[6]!) / w;
-    const d = (h[4]! - v * h[7]!) / w;
-    return [a, b, c, d, u - a * x - c * y, v - b * x - d * y];
+    return localTransform(this.inverse(), x, y);
   }
 
   private paint(

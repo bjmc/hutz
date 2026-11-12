@@ -41,6 +41,10 @@ dev:
 check:
     bun run typecheck
 
+# Run the unit tests
+test:
+    bun test tests
+
 # Remove generated output; the committed plate assets are left alone
 clean:
     rm -rf dist preview/*.png

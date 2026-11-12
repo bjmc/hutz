@@ -54,10 +54,6 @@ export interface FieldBounds {
 }
 
 export interface CardConfig {
-  source: [number, number];
-  roi: { x: number; y: number; w: number; h: number };
-  /** Size of the rectangle the card quad is mapped onto. */
-  card: [number, number];
   /** 3x3 row-major homography, photo pixels -> card space. */
   homography: number[];
   ink: { colour: [number, number, number] };
