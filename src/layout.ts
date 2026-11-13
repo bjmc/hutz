@@ -65,6 +65,11 @@ export class Layout {
       `${this.cfg.font.weight} ${size}px ${this.cfg.font.family}`;
   }
 
+  /** The card only ever holds capitals with single spaces between words. */
+  private normalise(raw: string): string {
+    return raw.toUpperCase().replace(/\s+/g, ' ').trim();
+  }
+
   private items(text: string, size: number, wordSpace: number): Item[] {
     this.fontAt(size);
     const out: Item[] = [];
@@ -126,30 +131,50 @@ export class Layout {
   }
 
   /**
+   * Walk a run, reporting where each item lands.
+   *
+   * Glyphs carry their own kern, applied before the item's pen position, so
+   * the two callers below (measuring a span, and placing items) agree by
+   * construction rather than by keeping two loops in step. Returns the pen
+   * position just past the run.
+   */
+  private walk(
+    items: Item[],
+    track: number,
+    visit: (item: Item, pen: number) => void,
+  ): number {
+    let pen = 0;
+    if (items.length === 0) return 0;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i]!;
+      // kerns accumulate down the run, exactly as the shaper would place them
+      if (it.kind === 'glyph') pen += it.kern;
+      visit(it, pen);
+      pen += it.advance + track;
+    }
+    // the loop has already added the last item's advance and tracking
+    return pen - track;
+  }
+
+  /**
    * Ink span of a run, measured over the letters only.
    *
    * Red marks are edits the writer squeezed in afterwards; a trailing mark
    * hangs past the last letter instead of widening the justified run.
    */
   private span(items: Item[], track: number): number {
-    let pen = 0;
     let first = 0;
     let last = 0;
     let seen = false;
 
-    for (let i = 0; i < items.length; i++) {
-      const it = items[i]!;
-      // kerns accumulate down the run, exactly as the shaper would place them
-      pen += it.kind === 'glyph' ? it.kern : 0;
-      if (it.kind === 'glyph') {
-        if (!seen) {
-          first = pen + it.left;
-          seen = true;
-        }
-        last = pen + it.right;
+    this.walk(items, track, (it, pen) => {
+      if (it.kind !== 'glyph') return;
+      if (!seen) {
+        first = pen + it.left;
+        seen = true;
       }
-      if (i < items.length - 1) pen += it.advance + track;
-    }
+      last = pen + it.right;
+    });
     return seen ? last - first : 0;
   }
 
@@ -211,21 +236,10 @@ export class Layout {
       }
     };
 
-    let pen = start;
-    for (let i = 0; i < body.length; i++) {
-      const it = body[i]!;
-      // kerns accumulate down the run, as the shaper would place them
-      if (it.kind === 'glyph') pen += it.kern;
-      push(it, pen);
-      if (i < body.length - 1) pen += it.advance + track;
-    }
-    // a trailing mark sits immediately after the last glyph's advance; its own
-    // advance already carries the gap
-    pen += body[body.length - 1]?.advance ?? 0;
-    for (const it of tail) {
-      push(it, pen);
-      pen += it.advance;
-    }
+    // the body runs on the tracked grid; a trailing mark then sits just past
+    // the last glyph's advance, its own advance already carrying the gap
+    const bodyEnd = this.walk(body, track, (it, pen) => push(it, start + pen));
+    this.walk(tail, 0, (it, pen) => push(it, start + bodyEnd + pen));
 
     const glyphRight = Number.isFinite(inkRight) ? inkRight : start;
     return {
@@ -246,7 +260,7 @@ export class Layout {
   /** Debug hook: natural width of a run before any centring. */
   measure(raw: string, field: Field): number[] {
     const slots = this.slots(field);
-    const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
+    const text = this.normalise(raw);
     return slots.map(s =>
       this.span(this.items(text, s.size, s.word_space),
         this.trackFor(s.size, s.letter_space)),
@@ -357,7 +371,7 @@ export class Layout {
 
   /** True when `raw` fits its field at full size. The UI rejects input if not. */
   fits(raw: string, field: Field): boolean {
-    const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
+    const text = this.normalise(raw);
     if (!text) return true;
     if (!this.slots(field).length) return false;
     return !this.wrap(text.split(' '), field).overflow;
@@ -371,7 +385,7 @@ export class Layout {
    * the card even though it has no spaces to wrap on.
    */
   clamp(raw: string, field: Field): string {
-    const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
+    const text = this.normalise(raw);
     if (this.fits(text, field)) return text;
 
     const words = text.split(' ');
@@ -401,7 +415,7 @@ export class Layout {
     const slots = this.slots(field);
     if (!slots.length) return [];
 
-    const text = raw.toUpperCase().replace(/\s+/g, ' ').trim();
+    const text = this.normalise(raw);
     if (!text) return [];
 
     const { lines, box } = this.wrap(text.split(' '), field);
