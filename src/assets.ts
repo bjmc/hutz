@@ -17,14 +17,6 @@ export function el<T extends HTMLElement>(id: string): T {
   return node as T;
 }
 
-/** Wait for the app's webfont, so text is measured with the real metrics. */
-export async function loadFont(): Promise<void> {
-  await document.fonts.load(
-    `${CONFIG.font.weight} 16px ${CONFIG.font.family}`,
-  );
-  await document.fonts.ready;
-}
-
 /** Load an image, rejecting rather than leaving a half-initialised element. */
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {

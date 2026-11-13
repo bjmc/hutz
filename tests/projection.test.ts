@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { invert3x3, localTransform } from '../src/projection';
+import { invert3x3, localTransform } from '../src/render';
 import { CONFIG } from '../src/config';
 
 /**

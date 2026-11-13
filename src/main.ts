@@ -1,4 +1,4 @@
-import { el, loadAssets, loadFont } from './assets';
+import { el, loadAssets } from './assets';
 import { CONFIG, EXPORT } from './config';
 import { editField } from './edit';
 import { Renderer } from './render';
@@ -15,7 +15,9 @@ async function main(): Promise<void> {
   const copy = el<HTMLButtonElement>('copy');
   const share = el<HTMLButtonElement>('share');
 
-  await loadFont();
+  // app.css names CardFont, so the browser starts fetching it while parsing;
+  // wait for that to finish, or Layout would measure the fallback face
+  await document.fonts.ready;
 
   const assets = await loadAssets();
   const renderer = new Renderer(canvas, CONFIG, assets);
@@ -76,29 +78,53 @@ async function main(): Promise<void> {
   });
 
   copy.addEventListener('click', async () => {
+    // Not every browser can put an image on the clipboard, and the ones that
+    // cannot do not agree on how they say so: Firefox before 127 has no
+    // ClipboardItem at all, while some builds have it but reject images. Ask
+    // first, so the message names the real reason instead of blaming
+    // permissions for a missing API.
+    if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) {
+      hint.textContent = 'This browser cannot copy images — use Download.';
+      return;
+    }
     try {
-      // the clipboard only accepts PNG
+      // the clipboard only takes PNG
       const blob = await renderer.toPngBlob();
       await navigator.clipboard.write([
         new ClipboardItem({ 'image/png': blob }),
       ]);
       hint.textContent = 'Copied to clipboard.';
     } catch {
-      hint.textContent = 'Clipboard blocked — use Download instead.';
+      hint.textContent = 'Copy was blocked — use Download instead.';
     }
   });
 
-  if (navigator.canShare) {
+  // Firefox ships `canShare` but gates `share` behind a preference that is off
+  // by default, so testing only `canShare` leaves a dead button. Require both,
+  // and confirm this browser will actually take a file before offering it.
+  const canShareFiles = (): boolean => {
+    if (typeof navigator.share !== 'function') return false;
+    if (typeof navigator.canShare !== 'function') return false;
+    try {
+      const probe = new File([new Blob()], 'x.jpg', { type: 'image/jpeg' });
+      return navigator.canShare({ files: [probe] });
+    } catch {
+      return false;
+    }
+  };
+
+  if (canShareFiles()) {
     share.hidden = false;
     share.addEventListener('click', async () => {
       const blob = await renderer.toBlob();
       const file = new File([blob], EXPORT.filename,
         { type: 'image/jpeg' });
-      if (!navigator.canShare({ files: [file] })) {
-        hint.textContent = 'This browser cannot share files.';
-        return;
+      try {
+        await navigator.share({ files: [file], title: EXPORT.title });
+      } catch {
+        // the user dismissing the share sheet is not an error worth shouting
+        hint.textContent = '';
       }
-      await navigator.share({ files: [file], title: EXPORT.title });
     });
   }
 
