@@ -31,6 +31,7 @@ build:
 # Measure a rendered card against assets/source/original.jpg
 # usage: just compare [path/to/export.jpg]
 compare path="preview/money-down.jpg":
+    bun tools/render.ts {{path}}
     {{python}} tools/compare.py {{path}}
 
 # Serve with rebuild-on-request on http://localhost:5173
