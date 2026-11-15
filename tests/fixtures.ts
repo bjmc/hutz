@@ -50,6 +50,7 @@ export function makeConfig(overrides: Partial<CardConfig> = {}): CardConfig {
         ],
       },
     },
+    watermark: { text: '', size: 15, margin: 14, colour: [255, 255, 255], alpha: 0.5 },
   };
   return { ...base, ...overrides };
 }

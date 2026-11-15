@@ -115,6 +115,36 @@ export class Renderer {
     if ('filter' in ctx) ctx.filter = 'blur(0.45px)';
     ctx.drawImage(marks, 0, 0);
     ctx.restore();
+
+    this.paintWatermark(width, height);
+  }
+
+  /**
+   * Stamp the configured domain into the lower-right corner.
+   *
+   * Drawn in image space, not card space: the watermark labels the exported
+   * file rather than joining the lettering printed on the card, so it must not
+   * be foreshortened with everything else.
+   */
+  private paintWatermark(width: number, height: number): void {
+    const wm = this.cfg.watermark;
+    if (!wm.text) return;
+
+    const ctx = this.ctx;
+    const [r, g, b] = wm.colour;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.font = `${this.cfg.font.weight} ${wm.size}px ${this.cfg.font.family}`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'alphabetic';
+    ctx.globalAlpha = wm.alpha;
+    // a dark rim keeps the caption legible over both pale card and dark suit
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(0 0 0 / 0.35)';
+    ctx.strokeText(wm.text, width - wm.margin, height - wm.margin);
+    ctx.fillStyle = `rgb(${r} ${g} ${b})`;
+    ctx.fillText(wm.text, width - wm.margin, height - wm.margin);
+    ctx.restore();
   }
 
   /**

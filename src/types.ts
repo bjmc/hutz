@@ -46,6 +46,21 @@ export interface LineSlot {
 }
 
 /**
+ * A small caption stamped into the exported image, in image space rather than
+ * card space: it marks the rendered file, not the printed card.
+ */
+export interface Watermark {
+  /** Empty string turns the watermark off. */
+  text: string;
+  /** Font size in image pixels. */
+  size: number;
+  /** Gap from the image's right and bottom edges, in image pixels. */
+  margin: number;
+  colour: [number, number, number];
+  alpha: number;
+}
+
+/**
  * The box a field is typeset in: lines are centred on `center` and wrapped to
  * `half` either side. `min_x`/`max_x` are how far the box may grow, to the card.
  */
@@ -68,6 +83,7 @@ export interface CardConfig {
   fields: { header: FieldBounds; top: FieldBounds; bottom: FieldBounds };
   /** Keyed by the character the mark draws, so lookups take the typed glyph. */
   marks: Record<string, Mark>;
+  watermark: Watermark;
 }
 
 export interface CardState {
