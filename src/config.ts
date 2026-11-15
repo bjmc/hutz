@@ -79,8 +79,8 @@ export const CONFIG: CardConfig = {
       "field": "bottom",
       "baseline": 304,
       "size": 40.87,
-      "letter_space": -0.072,
-      "word_space": 1.0
+      "letter_space": -0.04,
+      "word_space": 0.71
     }
   ],
   "fields": {
