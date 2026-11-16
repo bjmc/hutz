@@ -46,6 +46,27 @@ export interface LineSlot {
 }
 
 /**
+ * How far typesetting may depart from the printed card to fit more text.
+ *
+ * The measures are tried in order, each one reaching its limit before the next
+ * is touched, so text always uses the cheapest space available first:
+ *
+ *   1. the justification box widens from `half` out to the card's edges
+ *   2. letter and word spacing tighten towards `letter_space` / `word_space`
+ *   3. the type shrinks to `min_scale` of its printed size
+ *
+ * Only when all three are exhausted is more text refused.
+ */
+export interface FitLimits {
+  /** Tightest tracking tried, as a fraction of the em. Negative. */
+  letter_space: number;
+  /** Narrowest word space tried, as a multiple of the font size. */
+  word_space: number;
+  /** Smallest type size tried, as a fraction of the printed size. */
+  min_scale: number;
+}
+
+/**
  * A small caption stamped into the exported image, in image space rather than
  * card space: it marks the rendered file, not the printed card.
  */
@@ -81,6 +102,8 @@ export interface CardConfig {
   };
   lines: LineSlot[];
   fields: { header: FieldBounds; top: FieldBounds; bottom: FieldBounds };
+  /** How far typesetting may depart from the print to fit more text. */
+  fit: FitLimits;
   /** Keyed by the character the mark draws, so lookups take the typed glyph. */
   marks: Record<string, Mark>;
   watermark: Watermark;

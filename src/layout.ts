@@ -58,7 +58,35 @@ interface Box {
   x1: number;
 }
 
+/**
+ * How a slot's spacing and size have been relaxed to fit more text.
+ *
+ * `box` is the justification width, `pack` tightens the spacing and `scale`
+ * shrinks the type. Together they are one point on the fit axis.
+ */
+interface Stage {
+  box: Box;
+  /** 0 = printed tracking, 1 = the tightest allowed by `fit`. */
+  pack: number;
+  /** 1 = printed size, `fit.min_scale` = the smallest allowed. */
+  scale: number;
+}
+
+/** A wrapped field, and the stage that produced it. */
+interface Fitted {
+  lines: string[];
+  overflow: boolean;
+  stage: Stage;
+}
+
+/** The end of the fit axis: all three measures fully spent. */
+const MAX_PROGRESS = 3;
+
 const MARK_GAP = 0.06; // of size, between the last letter and its edit mark
+
+function clamp01(v: number): number {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
 
 export class Layout {
   constructor(
@@ -272,39 +300,52 @@ export class Layout {
   }
 
   /**
-   * Greedy wrap, widening the box only when the original one cannot hold the
-   * text.
+   * Fit `words` by spending the cheapest measures first.
    *
-   * `t` runs from 0 (the box the original was written in) to 1 (the printed
-   * card). Left and right grow to their own limits, so a side with more card
-   * beside it keeps expanding after the other has stopped. The smallest `t`
-   * that fits wins, so the box grows only as far as the text needs.
+   * The three measures are laid end to end on one axis, `p` in [0, 3]:
+   *
+   *   0..1  widen the justification box towards the card's edges
+   *   1..2  tighten tracking and word spaces towards the printed minimum
+   *   2..3  shrink the type towards `fit.min_scale`
+   *
+   * Each measure only starts once the previous one is exhausted, so the result
+   * is always the least distorted typesetting that still holds the text. The
+   * box never shrinks as `p` grows, which is what makes a bisection valid: the
+   * smallest `p` that fits is the whole answer.
+   *
+   * Returns `overflow` when even `p = 3` cannot hold the text.
    */
-  private wrap(
-    words: string[],
-    field: Field,
-  ): { lines: string[]; overflow: boolean; box: Box } {
-    const base = this.boxAt(field, 0);
+  private fit(words: string[], field: Field): Fitted {
+    const base = this.at(field, 0);
     const first = this.wrapAt(words, field, base);
-    if (!first.overflow) return { ...first, box: base };
+    if (!first.overflow) return first;
 
-    const full = this.boxAt(field, 1);
-    let fit = this.wrapAt(words, field, full);
-    if (fit.overflow) return { ...fit, box: full };
+    const full = this.at(field, MAX_PROGRESS);
+    const last = this.wrapAt(words, field, full);
+    if (last.overflow) return last;
 
     let lo = 0;
-    let hi = 1;
-    for (let n = 0; n < 12; n++) {
+    let hi = MAX_PROGRESS;
+    for (let n = 0; n < 14; n++) {
       const mid = (lo + hi) / 2;
-      const attempt = this.wrapAt(words, field, this.boxAt(field, mid));
+      const attempt = this.wrapAt(words, field, this.at(field, mid));
       if (attempt.overflow) {
         lo = mid;
       } else {
-        fit = attempt;
         hi = mid;
       }
     }
-    return { ...fit, box: this.boxAt(field, hi) };
+    return this.wrapAt(words, field, this.at(field, hi));
+  }
+
+  /** The field's typesetting at progress `p` along the measure axis. */
+  private at(field: Field, p: number): Stage {
+    const { min_scale } = this.cfg.fit;
+    return {
+      box: this.boxAt(field, clamp01(p)),
+      pack: clamp01(p - 1),
+      scale: p <= 2 ? 1 : 1 + clamp01(p - 2) * (min_scale - 1),
+    };
   }
 
   /** The field's box at growth `t`: 0 = original, 1 = the printed card. */
@@ -318,35 +359,52 @@ export class Layout {
     };
   }
 
-  private wrapAt(
-    words: string[],
-    field: Field,
-    box: Box,
-  ): { lines: string[]; overflow: boolean } {
+  /**
+   * A printed slot with this stage's packing and size folded in.
+   *
+   * The means are interpolated from the printed values towards their limits,
+   * so `pack = 0`, `scale = 1` reproduces the card exactly.
+   */
+  private slotAt(slot: LineSlot, stage: Stage): LineSlot {
+    const { letter_space, word_space } = this.cfg.fit;
+    const { pack, scale } = stage;
+    return {
+      ...slot,
+      size: slot.size * scale,
+      letter_space:
+        slot.letter_space + pack * (letter_space - slot.letter_space),
+      word_space: slot.word_space + pack * (word_space - slot.word_space),
+      // the nudge is measured in card pixels at printed size, so it shrinks
+      // with the type rather than pushing the line progressively off-centre
+      nudge: (slot.nudge ?? 0) * scale,
+    };
+  }
+
+  private wrapAt(words: string[], field: Field, stage: Stage): Fitted {
     const slots = this.slots(field);
     const lines: string[] = [];
     let i = 0;
 
     for (let s = 0; s < slots.length && i < words.length; s++) {
-      const slot = slots[s]!;
+      const slot = this.slotAt(slots[s]!, stage);
 
       // a single word that cannot fit on its own line is an overflow, not a
       // line: greedy wrapping would otherwise admit it and spill off the card
-      if (!this.fitsRun(words[i]!, slot, box)) {
-        return { lines, overflow: true };
+      if (!this.fitsRun(words[i]!, slot, stage.box)) {
+        return { lines, overflow: true, stage };
       }
 
       let j = i + 1;
       while (j < words.length) {
         const candidate = words.slice(i, j + 1).join(" ");
-        if (!this.fitsRun(candidate, slot, box)) break;
+        if (!this.fitsRun(candidate, slot, stage.box)) break;
         j++;
       }
       lines.push(words.slice(i, j).join(" "));
       i = j;
     }
 
-    return { lines, overflow: i < words.length };
+    return { lines, overflow: i < words.length, stage };
   }
 
   /**
@@ -369,12 +427,12 @@ export class Layout {
     );
   }
 
-  /** True when `raw` fits its field at full size. The UI rejects input if not. */
+  /** True when `raw` fits its field. The UI rejects input if not. */
   fits(raw: string, field: Field): boolean {
     const text = this.normalise(raw);
     if (!text) return true;
     if (!this.slots(field).length) return false;
-    return !this.wrap(text.split(" "), field).overflow;
+    return !this.fit(text.split(" "), field).overflow;
   }
 
   /**
@@ -412,7 +470,7 @@ export class Layout {
     return best;
   }
 
-  /** Lay out one field's text at its measured size, wrapping across slots. */
+  /** Lay out one field's text, squeezing it only as far as it must. */
   build(raw: string, field: Field): PlacedLine[] {
     const slots = this.slots(field);
     if (!slots.length) return [];
@@ -420,11 +478,11 @@ export class Layout {
     const text = this.normalise(raw);
     if (!text) return [];
 
-    const { lines, box } = this.wrap(text.split(" "), field);
+    const { lines, stage } = this.fit(text.split(" "), field);
 
     return lines.map((line, k) => {
-      const slot = slots[Math.min(k, slots.length - 1)]!;
-      return this.place(line, slot, box);
+      const slot = this.slotAt(slots[Math.min(k, slots.length - 1)]!, stage);
+      return this.place(line, slot, stage.box);
     });
   }
 }

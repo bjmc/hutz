@@ -22,8 +22,8 @@ async function main(): Promise<void> {
   const assets = await loadAssets();
   const renderer = new Renderer(canvas, CONFIG, assets);
 
-  // Every field is clamped to what the card can hold, so text never shrinks
-  // and never spills off the edge.
+  // Every field is clamped to what the card can hold once the layout has
+  // squeezed its spacing and size, so text never spills off the edge.
   const initial = readHash();
   const state: CardState = {
     header: renderer.clamp(initial.header, "header"),

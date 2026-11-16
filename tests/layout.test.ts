@@ -279,3 +279,58 @@ describe("Layout field growth", () => {
     }
   });
 });
+
+describe("Layout squeeze", () => {
+  // the bottom field has a single slot, so extra words cannot wrap away
+  const words = (n: number) =>
+    Array.from({ length: n }, () => "WORD").join(" ");
+  const sizeFor = (text: string): number =>
+    layout.build(text, "bottom")[0]!.size;
+  const limit = () => SIZE * makeConfig().fit.min_scale;
+
+  test("text that fits the printed box is left untouched", () => {
+    const [line] = layout.build("NO, MONEY DOWN", "bottom");
+    expect(line!.size).toBe(SIZE);
+  });
+
+  test("the type only shrinks when the spacing cannot save the text", () => {
+    // a config whose spacing limits equal the printed values: the first two
+    // measures have no room to move, so any squeezing must come from the size
+    const rigid = makeConfig();
+    rigid.fit = {
+      letter_space: rigid.lines[3]!.letter_space,
+      word_space: rigid.lines[3]!.word_space,
+      min_scale: 0.9,
+    };
+    const withRigid = new Layout(realContext(), rigid);
+    const text = words(7);
+
+    // packing alone saves this run, so the normal config keeps its type size
+    expect(sizeFor(text)).toBe(SIZE);
+
+    // with no packing room the same run only fits by shrinking
+    expect(withRigid.build(text, "bottom")[0]!.size).toBeLessThan(SIZE);
+  });
+
+  test("size only ever falls as the text grows", () => {
+    const sizes = Array.from({ length: 8 }, (_, i) => sizeFor(words(i + 1)));
+    for (let i = 1; i < sizes.length; i++) {
+      expect(sizes[i]!).toBeLessThanOrEqual(sizes[i - 1]!);
+    }
+  });
+
+  test("shrinking stops at the configured floor", () => {
+    for (let n = 1; n <= 12; n++) {
+      expect(sizeFor(words(n))).toBeGreaterThanOrEqual(limit() - 1e-9);
+    }
+  });
+
+  test("the printed size is reachable again when the text shortens", () => {
+    sizeFor(words(12)); // force the fitter through every measure
+    expect(sizeFor("HI")).toBe(SIZE);
+  });
+
+  test("some text is eventually refused", () => {
+    expect(layout.fits(words(40), "bottom")).toBe(false);
+  });
+});

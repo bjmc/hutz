@@ -36,6 +36,7 @@ export function makeConfig(overrides: Partial<CardConfig> = {}): CardConfig {
       top: { center: BOX.center, half: BOX.half, min_x: 10, max_x: 990 },
       bottom: { center: BOX.center, half: BOX.half, min_x: 10, max_x: 990 },
     },
+    fit: { letter_space: -0.02, word_space: 0.5, min_scale: 0.9 },
     marks: {
       "?": mark(20, 40, 10),
       "!": mark(10, 40, 4, 0.2),

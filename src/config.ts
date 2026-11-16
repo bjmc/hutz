@@ -83,6 +83,12 @@ export const CONFIG: CardConfig = {
       max_x: 516,
     },
   },
+  // tried in this order, each to its limit before the next is used
+  fit: {
+    letter_space: -0.09,
+    word_space: 0.4,
+    min_scale: 0.93,
+  },
   marks: {
     "?": {
       w: 43,
