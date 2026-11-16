@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Stage 1 of the asset build: plate and punctuation, from the source image.
 
-Reads `assets/source/original.jpg` and writes the handwriting-free plate
+Reads `original.jpg` and writes the handwriting-free plate
 (`cleaned-body.png`) plus the red punctuation vectors traced from it.
 
 The plate removes only the handwriting; the card's printed furniture (rule

@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = str(ROOT / "assets" / "source" / "original.jpg")
+SRC = str(ROOT / "original.jpg")
 
 # ROI measured from the card's quad, in image pixels
 ROI = (311, 241, 421, 245)

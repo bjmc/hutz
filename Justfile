@@ -2,7 +2,7 @@
 #
 # `src/config.ts` is hand-maintained and every asset is committed, so the site
 # needs only `just build`. The `plate` and `header` recipes re-derive the
-# committed images from assets/source/original.jpg if that is ever needed.
+# committed images from original.jpg if that is ever needed.
 
 python := ".venv/bin/python"
 
@@ -33,7 +33,7 @@ header:
 build:
     bun run build
 
-# Measure a rendered card against assets/source/original.jpg
+# Measure a rendered card against original.jpg
 # usage: just compare [path/to/export.jpg]
 compare path="preview/money-down.jpg":
     bun tools/render.ts {{path}}

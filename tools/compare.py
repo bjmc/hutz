@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from geometry import CARD_H, CARD_W, MEASURED, MEASURED_HEADER, QUAD  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "assets" / "source" / "original.jpg"
+SRC = ROOT / "original.jpg"
 DEFAULT_RENDER = ROOT / "preview" / "money-down.jpg"
 DIFF = ROOT / "preview" / "compare-diff.png"
 

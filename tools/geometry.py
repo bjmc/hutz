@@ -3,7 +3,7 @@
 
 The app does not use this: `src/config.ts` is hand-maintained and the generated
 assets under `assets/` are committed. These constants exist only so the asset
-pipeline can be re-run against `assets/source/original.jpg`.
+pipeline can be re-run against `original.jpg`.
 """
 
 # The card is seen at an angle in the source image, so the correction is a
