@@ -8,9 +8,5 @@
 #   .venv/bin/python -m pip install -r requirements.txt
 #
 # Verified working on Python 3.12 against a clean venv containing only these.
-
 numpy==2.5.5
 opencv-python-headless==5.0.0.93
-cairosvg==2.9.1
-fonttools==4.68.0
-pillow==13.0.0

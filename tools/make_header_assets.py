@@ -11,6 +11,7 @@ Three things in the header must survive: the printed rule below the name, the
 hand and its drawn outline, and the paper's own shading. The band is therefore
 clipped to the rows the name occupies, and the hand is held out of the erase.
 """
+
 from pathlib import Path
 
 import cv2
@@ -36,24 +37,23 @@ RULE_ROWS = (87, 88, 89)
 # rows the hand can occupy; the card's own figure is yellow too, so stop above
 # it
 FINGER_ROWS = 60
-MARGIN = 18        # clean stock either side of the band, for tone and grain
-CHAIKIN = 3        # corner-cutting passes that round the hand's outline
+MARGIN = 18  # clean stock either side of the band, for tone and grain
+CHAIKIN = 3  # corner-cutting passes that round the hand's outline
 EDGE_FEATHER = 1.2  # px the band edge fades over, hiding the cut
-BLEED = 0          # extra px the erase stays clear of the hand; GROW already
-                   # carries the mask past the outline, onto plain paper
-GROW = 3           # how far the yellow grows into its drawn outline. This is
-                   # the largest value that still takes the whole stroke: at 4
-                   # the mask starts swallowing the printed name where it
-                   # touches the hand, and that name is then restored with the
-                   # fingers instead of erased.
-DARKEN = 115       # grey level below which a pixel counts as outline
-MIN_BLOB = 400     # smallest yellow blob that is hand, in image pixels
+BLEED = 0  # extra px the erase stays clear of the hand; GROW already
+# carries the mask past the outline, onto plain paper
+GROW = 3  # how far the yellow grows into its drawn outline. This is
+# the largest value that still takes the whole stroke: at 4
+# the mask starts swallowing the printed name where it
+# touches the hand, and that name is then restored with the
+# fingers instead of erased.
+DARKEN = 115  # grey level below which a pixel counts as outline
+MIN_BLOB = 400  # smallest yellow blob that is hand, in image pixels
 
 
 def homographies():
     src = np.array([QUAD[k] for k in ("TL", "TR", "BR", "BL")], np.float32)
-    dst = np.array([[0, 0], [CARD_W, 0], [CARD_W, CARD_H], [0, CARD_H]],
-                   np.float32)
+    dst = np.array([[0, 0], [CARD_W, 0], [CARD_W, CARD_H], [0, CARD_H]], np.float32)
     return cv2.getPerspectiveTransform(src, dst)
 
 
@@ -70,17 +70,19 @@ def paper_patch(card):
     x0, x1 = BAND_X
     w = x1 - x0
 
-    left = card[y0:y1, x0 - MARGIN:x0 - 2]
-    right = card[y0:y1, x1 + 2:x1 + MARGIN]
+    left = card[y0:y1, x0 - MARGIN : x0 - 2]
+    right = card[y0:y1, x1 + 2 : x1 + MARGIN]
     t = np.linspace(0.0, 1.0, w, dtype=np.float32)[None, :, None]
-    patch = (left.mean(axis=1).astype(np.float32)[:, None, :] * (1 - t) +
-             right.mean(axis=1).astype(np.float32)[:, None, :] * t)
+    patch = (
+        left.mean(axis=1).astype(np.float32)[:, None, :] * (1 - t)
+        + right.mean(axis=1).astype(np.float32)[:, None, :] * t
+    )
 
     # Grain from each margin, centred on its own median so neither side drags the
     # other's brightness, then blended across the band the same way.
     gray = cv2.cvtColor(card, cv2.COLOR_BGR2GRAY)
-    gl = gray[y0:y1, x0 - MARGIN:x0 - 2].astype(np.float32)
-    gr = gray[y0:y1, x1 + 2:x1 + MARGIN].astype(np.float32)
+    gl = gray[y0:y1, x0 - MARGIN : x0 - 2].astype(np.float32)
+    gr = gray[y0:y1, x1 + 2 : x1 + MARGIN].astype(np.float32)
     gl -= float(np.median(gl))
     gr -= float(np.median(gr))
     ys = np.arange(y1 - y0)[:, None]
@@ -143,13 +145,13 @@ def hand_masks(card):
     # hand instead of erased.
     gray = cv2.cvtColor(card, cv2.COLOR_BGR2GRAY)
     dark = ((gray < DARKEN) * 255).astype(np.uint8)
-    near = cv2.dilate(core, cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE, (2 * GROW + 1, 2 * GROW + 1)))
+    near = cv2.dilate(
+        core, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * GROW + 1, 2 * GROW + 1))
+    )
     hand = cv2.bitwise_or(core, cv2.bitwise_and(near, dark))
     hand = smooth_mask(hand, CHAIKIN)
 
-    disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
-                                     (2 * BLEED + 1, 2 * BLEED + 1))
+    disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * BLEED + 1, 2 * BLEED + 1))
     return hand, cv2.dilate(hand, disc)
 
 
@@ -187,12 +189,10 @@ def main():
     # band rectangle alone -- feathering the combined mask would leave partial
     # alpha around the hand, letting the printed name bleed back through.
     clean = plate.copy()
-    hand_image = cv2.warpPerspective(hand, inv, (pw, ph),
-                                     flags=cv2.INTER_NEAREST)
+    hand_image = cv2.warpPerspective(hand, inv, (pw, ph), flags=cv2.INTER_NEAREST)
     band = np.zeros((CARD_H, CARD_W), np.uint8)
     band[y0:y1, x0:x1] = 255
-    band_image = cv2.warpPerspective(band, inv, (pw, ph),
-                                     flags=cv2.INTER_LINEAR)
+    band_image = cv2.warpPerspective(band, inv, (pw, ph), flags=cv2.INTER_LINEAR)
     band_image = cv2.GaussianBlur(band_image, (0, 0), EDGE_FEATHER)
     alpha = (band_image.astype(np.float32) / 255.0) * (hand_image == 0)
     patched = to_image(erased, inv, (pw, ph))
@@ -200,33 +200,36 @@ def main():
     clean = np.clip(plate * (1 - a) + patched * a, 0, 255).astype(np.uint8)
     clean[hand_image > 0] = plate[hand_image > 0]
 
-    cv2.imwrite(str(CARD / "plate.jpg"), clean,
-                [cv2.IMWRITE_JPEG_QUALITY, 94])
+    cv2.imwrite(str(CARD / "plate.jpg"), clean, [cv2.IMWRITE_JPEG_QUALITY, 94])
     # Full-size alpha mask of the hand: 255 where the fingers are, 0 elsewhere.
     # The app punches this out of its ink layer with `destination-out`, which
     # consults only alpha, so the colour channels carry nothing and are left
     # zeroed -- one long run that compresses to almost nothing.
     fingers = np.zeros((ph, pw, 4), np.uint8)
     fingers[hand_image > 0, 3] = 255
-    cv2.imwrite(str(CARD / "fingers.png"), fingers,
-                [cv2.IMWRITE_PNG_COMPRESSION, 9])
+    cv2.imwrite(str(CARD / "fingers.png"), fingers, [cv2.IMWRITE_PNG_COMPRESSION, 9])
 
     def crop(img, scale=2, rows=(20, 100), cols=(20, 500)):
-        c = img[rows[0]:rows[1], cols[0]:cols[1]]
+        c = img[rows[0] : rows[1], cols[0] : cols[1]]
         size = ((cols[1] - cols[0]) * scale, (rows[1] - rows[0]) * scale)
         return cv2.resize(c, size, interpolation=cv2.INTER_NEAREST)
 
     after = to_image(clean, H, (CARD_W, CARD_H))
     cv2.imwrite(str(DEBUG / "header-before.png"), crop(card))
     cv2.imwrite(str(DEBUG / "header-after.png"), crop(after))
-    cv2.imwrite(str(DEBUG / "header-matte.png"),
-                crop(cv2.cvtColor(hand, cv2.COLOR_GRAY2BGR)))
+    cv2.imwrite(
+        str(DEBUG / "header-matte.png"), crop(cv2.cvtColor(hand, cv2.COLOR_GRAY2BGR))
+    )
 
     gray = cv2.cvtColor(after, cv2.COLOR_BGR2GRAY)
-    inside = (gray[y0:y1, x0 + 2:x0 + 10].mean(),
-              gray[y0:y1, x1 - 10:x1 - 2].mean())
-    outside = (gray[y0:y1, x0 - 10:x0 - 2].mean(),
-               gray[y0:y1, x1 + 2:x1 + 10].mean())
+    inside = (
+        gray[y0:y1, x0 + 2 : x0 + 10].mean(),
+        gray[y0:y1, x1 - 10 : x1 - 2].mean(),
+    )
+    outside = (
+        gray[y0:y1, x0 - 10 : x0 - 2].mean(),
+        gray[y0:y1, x1 + 2 : x1 + 10].mean(),
+    )
     band = np.zeros_like(gray, bool)
     band[y0:y1, x0:x1] = True
     print(f"seam inside {np.mean(inside):.1f} outside {np.mean(outside):.1f}")

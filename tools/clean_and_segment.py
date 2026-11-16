@@ -6,6 +6,7 @@ lines together. Rotating until the row histogram is sharpest recovers the
 baseline angle; after that the ruled lines are horizontal, long, and removable
 by run length alone.
 """
+
 from pathlib import Path
 
 import cv2
@@ -17,7 +18,7 @@ SRC = str(ROOT / "assets" / "source" / "original.jpg")
 # ROI measured from the card's quad, in image pixels
 ROI = (311, 241, 421, 245)
 
-INK_LUM = 130      # below this is ink, not card stock
+INK_LUM = 130  # below this is ink, not card stock
 RULE_MIN_RUN = 90  # a horizontal ink run this long is a printed rule
 
 

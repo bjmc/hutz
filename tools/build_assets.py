@@ -11,6 +11,7 @@ mask is warped back so the source image itself is never resampled.
 Stage 2 (`make_header_assets.py`) then takes `cleaned-body.png` and erases the
 printed name, producing the `plate.jpg` the app ships.
 """
+
 import re
 import subprocess
 import sys
@@ -20,8 +21,13 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from clean_and_segment import (ROI, SRC, find_angle, ink_from,  # noqa: E402
-                               remove_rules)
+from clean_and_segment import (
+    ROI,
+    SRC,
+    find_angle,
+    ink_from,  # noqa: E402
+    remove_rules,
+)
 from geometry import CARD_H, CARD_W, MEASURED, QUAD  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -36,16 +42,16 @@ BANDS = [
     ("B", 68, 106, "top", "CONTINGENCY?", 16),
     ("C", 154, 192, "bottom", "NO, MONEY DOWN", 6),
 ]
-SLACK = 5         # above each band
+SLACK = 5  # above each band
 TRACE_UP = 8
-INK_LUM = 45      # darkest stroke core
-PAPER_LUM = 150   # card stock luminance
+INK_LUM = 45  # darkest stroke core
+PAPER_LUM = 150  # card stock luminance
 
 
 def segmentation():
     img = cv2.imread(SRC)
     x, y, w, h = ROI
-    roi = img[y:y + h, x:x + w].copy()
+    roi = img[y : y + h, x : x + w].copy()
     ink0 = ink_from(cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY))
     angle = find_angle(ink0, w, h)
     M = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
@@ -93,7 +99,7 @@ def text_envelope(h, w):
     lo = min(b[1] for b in BANDS) - SLACK
     hi = max(b[2] + b[5] for b in BANDS)
     env = np.zeros((h, w), np.uint8)
-    env[max(0, lo):min(h, hi + 1)] = 255
+    env[max(0, lo) : min(h, hi + 1)] = 255
     return env, lo, hi
 
 
@@ -123,7 +129,7 @@ def build_plate(img, ink, hand, colour, M, w, h):
     inv = cv2.invertAffineTransform(M)
     m_roi = cv2.warpAffine(m, inv, (w, h), flags=cv2.INTER_NEAREST)
 
-    patch = img[y:y + h, x:x + w]
+    patch = img[y : y + h, x : x + w]
     filled = cv2.inpaint(patch, m_roi, 7, cv2.INPAINT_TELEA)
     # inpaint leaves faint streaks inside wide strokes; flatten just those
     smooth = cv2.medianBlur(filled, 5)
@@ -131,7 +137,7 @@ def build_plate(img, ink, hand, colour, M, w, h):
     filled[keep > 0] = smooth[keep > 0]
 
     plate = img.copy()
-    plate[y:y + h, x:x + w] = filled
+    plate[y : y + h, x : x + w] = filled
     return plate, m
 
 
@@ -167,7 +173,7 @@ def compose(colour, mask, x, y, w, h):
     if len(ys):
         x0, x1 = x0 + xs.min(), x0 + xs.max() + 1
         y0, y1 = y0 + ys.min(), y0 + ys.max() + 1
-        keep = keep[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        keep = keep[ys.min() : ys.max() + 1, xs.min() : xs.max() + 1]
 
     # The fill is the pen's own core, not its average: thresholding picks up the
     # antialiased rim, which is a wash of red over paper and would drag the
@@ -209,40 +215,58 @@ def ellipse_svg(keep, w, h):
     t = np.radians(theta)
     ex = np.hypot(rx * np.cos(t), ry * np.sin(t))
     ey = np.hypot(rx * np.sin(t), ry * np.cos(t))
-    return dict(cx=cx, cy=cy, rx=rx, ry=ry, theta=theta,
-                w=int(np.ceil(2 * ex)) + 2, h=int(np.ceil(2 * ey)) + 2)
+    return dict(
+        cx=cx,
+        cy=cy,
+        rx=rx,
+        ry=ry,
+        theta=theta,
+        w=int(np.ceil(2 * ex)) + 2,
+        h=int(np.ceil(2 * ey)) + 2,
+    )
 
 
 def potrace_layer(keep, w, h, fill, tag):
     """Trace a soft coverage field to a filled path."""
-    up = cv2.resize(keep, (w * TRACE_UP, h * TRACE_UP),
-                    interpolation=cv2.INTER_CUBIC)
+    up = cv2.resize(keep, (w * TRACE_UP, h * TRACE_UP), interpolation=cv2.INTER_CUBIC)
     up = np.clip(up * 255, 0, 255).astype(np.uint8)
     _, up = cv2.threshold(up, 128, 255, cv2.THRESH_BINARY)
 
     pbm = OUT / f"{tag}.pbm"
     cv2.imwrite(str(pbm), 255 - up)
     raw = OUT / f"{tag}.raw.svg"
-    subprocess.run(["potrace", str(pbm), "-s", "-o", str(raw),
-                    "--turdsize", "2", "--alphamax", "1.0"], check=True)
+    subprocess.run(
+        [
+            "potrace",
+            str(pbm),
+            "-s",
+            "-o",
+            str(raw),
+            "--turdsize",
+            "2",
+            "--alphamax",
+            "1.0",
+        ],
+        check=True,
+    )
 
     body = raw.read_text()
     # potrace emits coordinates in tenths of a pixel plus its own scaling group;
     # keep that group and viewBox verbatim and only rescale the outer element
     vb = re.search(r'viewBox="([^"]+)"', body)
-    grp = re.search(r'<g\b[^>]*transform[^>]*>.*?</g>', body, re.S)
+    grp = re.search(r"<g\b[^>]*transform[^>]*>.*?</g>", body, re.S)
     if not vb or not grp:
         raise RuntimeError(f"unexpected potrace output in {raw}")
-    paths = re.sub(r'fill="#[0-9a-fA-F]{6}"', f'fill="{fill}"',
-                   grp.group(0), count=1)
+    paths = re.sub(r'fill="#[0-9a-fA-F]{6}"', f'fill="{fill}"', grp.group(0), count=1)
 
     pbm.unlink()
     raw.unlink()
     return vb.group(1), paths
 
 
-def trace_mark(name, colour, lab, ids, box, dot_ids=(), dot_box=None,
-               ellipse_only=False):
+def trace_mark(
+    name, colour, lab, ids, box, dot_ids=(), dot_box=None, ellipse_only=False
+):
     """Vectorise a mark. Its dot, if any, is an ellipse rather than a traced path."""
     fill = "#a60204"
     rgb = np.array([166, 1, 3])
@@ -255,9 +279,17 @@ def trace_mark(name, colour, lab, ids, box, dot_ids=(), dot_box=None,
         keep, rgb, (x0, y0), (w, h) = compose(colour, mask, x, y, w, h)
         fill = f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
         vb, layer = potrace_layer(keep, w, h, fill, name)
-        spans.append((x0, y0, w, h, f'<g transform="scale('
-                      f'{w / (w * TRACE_UP):.6f},{h / (h * TRACE_UP):.6f})">'
-                      f'{layer}</g>'))
+        spans.append(
+            (
+                x0,
+                y0,
+                w,
+                h,
+                f'<g transform="scale('
+                f'{w / (w * TRACE_UP):.6f},{h / (h * TRACE_UP):.6f})">'
+                f"{layer}</g>",
+            )
+        )
 
     if dot_ids or ellipse_only:
         src = dot_ids if dot_ids else ids
@@ -271,12 +303,20 @@ def trace_mark(name, colour, lab, ids, box, dot_ids=(), dot_box=None,
             fw, fh = fit["w"], fit["h"]
             # the ellipse occupies its own bounds, so centre it in that box
             mx, my = fw / 2, fh / 2
-            body = (f'<ellipse cx="{mx:.2f}" cy="{my:.2f}" rx="{fit["rx"]:.2f}" '
-                    f'ry="{fit["ry"]:.2f}" transform="rotate({fit["theta"]:.2f} '
-                    f'{mx:.2f} {my:.2f})"/>')
-            spans.append((int(round(dx0 + fit["cx"] - mx)),
-                          int(round(dy0 + fit["cy"] - my)), fw, fh,
-                          f'<g fill="{dfill}">{body}</g>'))
+            body = (
+                f'<ellipse cx="{mx:.2f}" cy="{my:.2f}" rx="{fit["rx"]:.2f}" '
+                f'ry="{fit["ry"]:.2f}" transform="rotate({fit["theta"]:.2f} '
+                f'{mx:.2f} {my:.2f})"/>'
+            )
+            spans.append(
+                (
+                    int(round(dx0 + fit["cx"] - mx)),
+                    int(round(dy0 + fit["cy"] - my)),
+                    fw,
+                    fh,
+                    f'<g fill="{dfill}">{body}</g>',
+                )
+            )
 
     if not spans:
         return None
@@ -297,17 +337,23 @@ def trace_mark(name, colour, lab, ids, box, dot_ids=(), dot_box=None,
             pieces.append(f'<g transform="translate({ox},{oy})">{body}</g>')
         else:
             pieces.append(body)
-    kind = ("ellipse" if ellipse_only else
-            "mixed" if dot_ids else "path")
+    kind = "ellipse" if ellipse_only else "mixed" if dot_ids else "path"
     svg = OUT / f"{name}.svg"
     svg.write_text(
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{uw}" height="{uh}" '
         f'viewBox="0 0 {uw} {uh}" preserveAspectRatio="none">'
-        f'{"".join(pieces)}</svg>\n')
-    print(f"  {name:8s} {uw}x{uh} rgb {tuple(rgb)} -> {kind} "
-          f"{svg.stat().st_size} B")
-    return dict(name=name, x=int(ux0), y=int(uy0), w=int(uw), h=int(uh),
-                rgb=[int(v) for v in rgb], kind=kind)
+        f"{''.join(pieces)}</svg>\n"
+    )
+    print(f"  {name:8s} {uw}x{uh} rgb {tuple(rgb)} -> {kind} {svg.stat().st_size} B")
+    return dict(
+        name=name,
+        x=int(ux0),
+        y=int(uy0),
+        w=int(uw),
+        h=int(uh),
+        rgb=[int(v) for v in rgb],
+        kind=kind,
+    )
 
 
 def group_marks(lab, stats, colour, n):
@@ -340,9 +386,17 @@ def group_marks(lab, stats, colour, n):
                 g["w"], g["h"] = g["x1"] - x0, g["y1"] - y0
                 break
         else:
-            groups.append(dict(x=c["x"], y=c["y"], x1=c["x"] + c["w"],
-                               y1=c["y"] + c["h"], w=c["w"], h=c["h"],
-                               items=[c]))
+            groups.append(
+                dict(
+                    x=c["x"],
+                    y=c["y"],
+                    x1=c["x"] + c["w"],
+                    y1=c["y"] + c["h"],
+                    w=c["w"],
+                    h=c["h"],
+                    items=[c],
+                )
+            )
 
     groups.sort(key=lambda g: g["x"])
     # Identify by where the mark's foot sits against the band baselines. Count
@@ -355,9 +409,9 @@ def group_marks(lab, stats, colour, n):
         if near_c and g["w"] <= 26 and g["h"] <= 26:
             name = "comma"
         elif near_c:
-            name = "bang"       # bottom field: NO, MONEY DOWN!
+            name = "bang"  # bottom field: NO, MONEY DOWN!
         else:
-            name = "qmark"      # top field: WORKS ON / CONTINGENCY?
+            name = "qmark"  # top field: WORKS ON / CONTINGENCY?
         named.append((name, g))
 
     out = []
@@ -366,16 +420,35 @@ def group_marks(lab, stats, colour, n):
             # the dot is traced separately so it can be emitted as an ellipse
             dot = max(g["items"], key=lambda c: c["y"])
             stem = [c for c in g["items"] if c is not dot]
-            out.append(dict(name=name, role="stem", ids=[c["id"] for c in stem],
-                            box=(g["x"], g["y"], g["w"], g["h"]),
-                            dot_ids=[dot["id"]],
-                            dot_box=(dot["x"], dot["y"], dot["w"], dot["h"])))
-            out.append(dict(name="period", role="dot", ids=[dot["id"]],
-                            box=(dot["x"], dot["y"], dot["w"], dot["h"]),
-                            dot_ids=[]))
+            out.append(
+                dict(
+                    name=name,
+                    role="stem",
+                    ids=[c["id"] for c in stem],
+                    box=(g["x"], g["y"], g["w"], g["h"]),
+                    dot_ids=[dot["id"]],
+                    dot_box=(dot["x"], dot["y"], dot["w"], dot["h"]),
+                )
+            )
+            out.append(
+                dict(
+                    name="period",
+                    role="dot",
+                    ids=[dot["id"]],
+                    box=(dot["x"], dot["y"], dot["w"], dot["h"]),
+                    dot_ids=[],
+                )
+            )
             continue
-        out.append(dict(name=name, role="whole", ids=[c["id"] for c in g["items"]],
-                        box=(g["x"], g["y"], g["w"], g["h"]), dot_ids=[]))
+        out.append(
+            dict(
+                name=name,
+                role="whole",
+                ids=[c["id"] for c in g["items"]],
+                box=(g["x"], g["y"], g["w"], g["h"]),
+                dot_ids=[],
+            )
+        )
     return out
 
 
@@ -389,11 +462,9 @@ def card_marks():
     """
     img = cv2.imread(SRC)
     src = np.array([QUAD[k] for k in ("TL", "TR", "BR", "BL")], np.float32)
-    dst = np.array([[0, 0], [CARD_W, 0], [CARD_W, CARD_H], [0, CARD_H]],
-                   np.float32)
+    dst = np.array([[0, 0], [CARD_W, 0], [CARD_W, CARD_H], [0, CARD_H]], np.float32)
     m = cv2.getPerspectiveTransform(src, dst)
-    card = cv2.warpPerspective(img, m, (CARD_W, CARD_H),
-                               flags=cv2.INTER_LANCZOS4)
+    card = cv2.warpPerspective(img, m, (CARD_W, CARD_H), flags=cv2.INTER_LANCZOS4)
     b, g, r = (card[..., i].astype(int) for i in range(3))
     red = ((r > 90) & (r > g + 45) & (r > b + 45)).astype(np.uint8)
     # the red pen lies on the desk outside the card face; the card's own border
@@ -434,9 +505,16 @@ def main():
     marks = group_marks(lab, stats, card, n)
     drawn = 0
     for m in marks:
-        if trace_mark(m["name"], card, lab, m["ids"], m["box"],
-                      dot_ids=m["dot_ids"], dot_box=m.get("dot_box"),
-                      ellipse_only=(m["role"] == "dot")):
+        if trace_mark(
+            m["name"],
+            card,
+            lab,
+            m["ids"],
+            m["box"],
+            dot_ids=m["dot_ids"],
+            dot_box=m.get("dot_box"),
+            ellipse_only=(m["role"] == "dot"),
+        ):
             drawn += 1
     print(f"{drawn} mark(s) traced in card space")
 

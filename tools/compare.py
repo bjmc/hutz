@@ -15,6 +15,7 @@ For each band it reports the lettering's ink box and the cap height of the
 tallest flat-topped letter, plus the mean absolute difference over the whole
 card. A diff image is written for eyeballing the residual.
 """
+
 import sys
 from pathlib import Path
 
@@ -41,11 +42,9 @@ RULE_TOP, RULE_BOTTOM = 10, 480
 
 def to_card(img):
     src = np.array([QUAD[k] for k in ("TL", "TR", "BR", "BL")], np.float32)
-    dst = np.array([[0, 0], [CARD_W, 0], [CARD_W, CARD_H], [0, CARD_H]],
-                   np.float32)
+    dst = np.array([[0, 0], [CARD_W, 0], [CARD_W, CARD_H], [0, CARD_H]], np.float32)
     m = cv2.getPerspectiveTransform(src, dst)
-    return cv2.warpPerspective(img, m, (CARD_W, CARD_H),
-                               flags=cv2.INTER_LANCZOS4)
+    return cv2.warpPerspective(img, m, (CARD_W, CARD_H), flags=cv2.INTER_LANCZOS4)
 
 
 def red_mask(card):
@@ -68,11 +67,12 @@ def ink_box(card, box, name, exclude=()):
     lo = max(RULE_TOP, base - 2 * box["cap"])
     hi = min(RULE_BOTTOM, base + box["cap"])
 
-    grey = cv2.cvtColor(card[lo:hi, max(0, x0 - 12):min(CARD_W, x1 + 12)],
-                        cv2.COLOR_BGR2GRAY)
+    grey = cv2.cvtColor(
+        card[lo:hi, max(0, x0 - 12) : min(CARD_W, x1 + 12)], cv2.COLOR_BGR2GRAY
+    )
     ink = grey < 130
     for m in exclude:
-        ink &= ~m[lo:hi, max(0, x0 - 12):min(CARD_W, x1 + 12)]
+        ink &= ~m[lo:hi, max(0, x0 - 12) : min(CARD_W, x1 + 12)]
 
     rows = ink.any(axis=1)
     if not rows.any():
@@ -81,8 +81,9 @@ def ink_box(card, box, name, exclude=()):
     # a printed rule runs most of the card's width; stop growth there, or the
     # header's ink run swallows the top rule a few rows under its baseline
     full = cv2.cvtColor(card[lo:hi], cv2.COLOR_BGR2GRAY) < 130
-    wide = (full & ~np.any([e[lo:hi] for e in exclude], axis=0)).sum(axis=1) \
-        > 0.6 * CARD_W
+    wide = (full & ~np.any([e[lo:hi] for e in exclude], axis=0)).sum(
+        axis=1
+    ) > 0.6 * CARD_W
 
     def limit(start, step, edge):
         y, blank = start, 0
@@ -103,12 +104,13 @@ def ink_box(card, box, name, exclude=()):
     top = limit(at, -1, -1)
     bottom = limit(at, 1, len(rows))
 
-    band = ink[top:bottom + 1]
+    band = ink[top : bottom + 1]
     ys, xs = np.nonzero(band)
     if len(xs) == 0:
         return None
     return dict(
-        x=int(xs.min()), y=int(ys.min() + top),
+        x=int(xs.min()),
+        y=int(ys.min() + top),
         w=int(xs.max() - xs.min() + 1),
         h=int(ys.max() - ys.min() + 1),
         area=int(band.sum()),
@@ -132,6 +134,7 @@ def signed_diff(original, render):
     source image's dark border are identical in both images by construction, so
     they always agree and say nothing about the lettering.
     """
+
     def darkness(img):
         grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
         # 0 on bare paper, 1 on solid ink
@@ -141,13 +144,12 @@ def signed_diff(original, render):
     dark_r = darkness(render)
 
     out = np.empty_like(original)
-    out[..., 0] = 255 * (1 - dark_r)   # B
-    out[..., 1] = 255 * (1 - dark_o)   # G
-    out[..., 2] = 255 * (1 - dark_r)   # R
+    out[..., 0] = 255 * (1 - dark_r)  # B
+    out[..., 1] = 255 * (1 - dark_o)  # G
+    out[..., 2] = 255 * (1 - dark_r)  # R
 
     y0 = max(RULE_TOP, min(b["baseline"] - 2 * b["cap"] for b in BANDS.values()))
-    y1 = min(RULE_BOTTOM, max(b["baseline"] + b["cap"] + 8
-                              for b in BANDS.values()))
+    y1 = min(RULE_BOTTOM, max(b["baseline"] + b["cap"] + 8 for b in BANDS.values()))
     x0 = max(0, min(b["x0"] for b in BANDS.values()) - 20)
     x1 = min(CARD_W, max(b["x1"] for b in BANDS.values()) + 20)
     return out[y0:y1, x0:x1]
@@ -161,10 +163,12 @@ def report(original, render, name):
         return
     dw = b["w"] - a["w"]
     dh = b["h"] - a["h"]
-    print(f"  {name}: printed {a['w']:3d}x{a['h']:2d}  "
-          f"render {b['w']:3d}x{b['h']:2d}   "
-          f"width {dw:+3d}px ({dw / a['w'] * 100:+5.1f}%)  "
-          f"height {dh:+2d}px")
+    print(
+        f"  {name}: printed {a['w']:3d}x{a['h']:2d}  "
+        f"render {b['w']:3d}x{b['h']:2d}   "
+        f"width {dw:+3d}px ({dw / a['w'] * 100:+5.1f}%)  "
+        f"height {dh:+2d}px"
+    )
 
 
 def main(argv):
@@ -172,8 +176,9 @@ def main(argv):
     if not path.is_absolute():
         path = ROOT / path
     if not path.exists():
-        sys.exit(f"no render at {path} — export one from the app with the "
-                 f"Download button")
+        sys.exit(
+            f"no render at {path} — export one from the app with the Download button"
+        )
     original = to_card(cv2.imread(str(SRC)))
     render = to_card(cv2.imread(str(path)))
     if render.shape != original.shape:
@@ -183,19 +188,26 @@ def main(argv):
     print("lettering, red marks excluded:")
     ro, rr = red_mask(original), red_mask(render)
     for name, box in BANDS.items():
-        report(ink_box(original, box, name, [ro]),
-               ink_box(render, box, name, [rr]), name)
+        report(
+            ink_box(original, box, name, [ro]), ink_box(render, box, name, [rr]), name
+        )
 
     # whole-card agreement, and a signed diff image for the eye
     diff = cv2.absdiff(original, render)
     print(f"\n  mean abs difference: {diff.mean():.2f}/255")
 
     DIFF.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(DIFF), cv2.resize(signed_diff(original, render),
-                                      None, fx=2, fy=2,
-                                      interpolation=cv2.INTER_NEAREST))
-    print(f"  wrote {DIFF}  (magenta = only in the print, "
-          f"green = only in the render)")
+    cv2.imwrite(
+        str(DIFF),
+        cv2.resize(
+            signed_diff(original, render),
+            None,
+            fx=2,
+            fy=2,
+            interpolation=cv2.INTER_NEAREST,
+        ),
+    )
+    print(f"  wrote {DIFF}  (magenta = only in the print, green = only in the render)")
 
 
 if __name__ == "__main__":
