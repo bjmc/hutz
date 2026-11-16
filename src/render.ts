@@ -1,7 +1,5 @@
-import type {
-  Assets, CardConfig, CardState, Field, PlacedLine,
-} from './types';
-import { Layout } from './layout';
+import type { Assets, CardConfig, CardState, Field, PlacedLine } from "./types";
+import { Layout } from "./layout";
 
 /**
  * The card is described in a flat rectangle (530x484) but drawn on a screencap
@@ -16,21 +14,35 @@ import { Layout } from './layout';
 
 /** Row-major 3x3 inverse. Throws if the matrix is singular. */
 export function invert3x3(m: readonly number[]): number[] {
-  if (m.length !== 9) throw new Error('expected a 3x3 matrix');
+  if (m.length !== 9) throw new Error("expected a 3x3 matrix");
   const [a, b, c, d, e, f, g, h, i] = m as [
-    number, number, number, number, number, number, number, number, number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
   ];
 
   const A = e * i - f * h;
   const B = -(d * i - f * g);
   const C = d * h - e * g;
   const det = a * A + b * B + c * C;
-  if (det === 0) throw new Error('matrix is not invertible');
+  if (det === 0) throw new Error("matrix is not invertible");
 
   return [
-    A / det, -(b * i - c * h) / det, (b * f - c * e) / det,
-    B / det, (a * i - c * g) / det, -(a * f - c * d) / det,
-    C / det, -(a * h - b * g) / det, (a * e - b * d) / det,
+    A / det,
+    -(b * i - c * h) / det,
+    (b * f - c * e) / det,
+    B / det,
+    (a * i - c * g) / det,
+    -(a * f - c * d) / det,
+    C / det,
+    -(a * h - b * g) / det,
+    (a * e - b * d) / det,
   ];
 }
 
@@ -70,8 +82,8 @@ export class Renderer {
     private cfg: CardConfig,
     private assets: Assets,
   ) {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('canvas 2d unavailable');
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("canvas 2d unavailable");
     this.ctx = ctx;
     this.layout = new Layout(ctx, cfg);
   }
@@ -91,9 +103,9 @@ export class Renderer {
     ctx.drawImage(this.assets.plate, 0, 0);
 
     const lines = [
-      ...this.layout.build(state.header, 'header'),
-      ...this.layout.build(state.top, 'top'),
-      ...this.layout.build(state.bottom, 'bottom'),
+      ...this.layout.build(state.header, "header"),
+      ...this.layout.build(state.top, "top"),
+      ...this.layout.build(state.bottom, "bottom"),
     ];
 
     // The plate already shows the fingers, so the ink must never print over
@@ -102,9 +114,9 @@ export class Renderer {
     const hand = state.header.trim() ? this.assets.fingers : null;
     const ink = this.textLayer(width, height, lines, false, hand);
     ctx.save();
-    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalCompositeOperation = "multiply";
     ctx.globalAlpha = 0.94;
-    if ('filter' in ctx) ctx.filter = 'blur(0.45px)';
+    if ("filter" in ctx) ctx.filter = "blur(0.45px)";
     ctx.drawImage(ink, 0, 0);
     ctx.restore();
 
@@ -112,7 +124,7 @@ export class Renderer {
     // screencap. Multiplying them again would darken that a second time.
     const marks = this.textLayer(width, height, lines, true, hand);
     ctx.save();
-    if ('filter' in ctx) ctx.filter = 'blur(0.45px)';
+    if ("filter" in ctx) ctx.filter = "blur(0.45px)";
     ctx.drawImage(marks, 0, 0);
     ctx.restore();
 
@@ -135,12 +147,12 @@ export class Renderer {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.font = `${this.cfg.font.weight} ${wm.size}px ${this.cfg.font.family}`;
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = "right";
+    ctx.textBaseline = "alphabetic";
     ctx.globalAlpha = wm.alpha;
     // a dark rim keeps the caption legible over both pale card and dark suit
     ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(0 0 0 / 0.35)';
+    ctx.strokeStyle = "rgba(0 0 0 / 0.35)";
     ctx.strokeText(wm.text, width - wm.margin, height - wm.margin);
     ctx.fillStyle = `rgb(${r} ${g} ${b})`;
     ctx.fillText(wm.text, width - wm.margin, height - wm.margin);
@@ -161,21 +173,21 @@ export class Renderer {
     cut: HTMLImageElement | null,
   ): HTMLCanvasElement {
     if (!this.layer) {
-      this.layer = document.createElement('canvas');
+      this.layer = document.createElement("canvas");
     }
     const layer = this.layer;
     layer.width = width;
     layer.height = height;
-    const lctx = layer.getContext('2d');
-    if (!lctx) throw new Error('canvas 2d unavailable');
+    const lctx = layer.getContext("2d");
+    if (!lctx) throw new Error("canvas 2d unavailable");
 
     this.paint(lctx, lines, marksOnly);
 
     if (cut) {
       // `destination-out` keeps only pixels the mask is transparent over
-      lctx.globalCompositeOperation = 'destination-out';
+      lctx.globalCompositeOperation = "destination-out";
       lctx.drawImage(cut, 0, 0);
-      lctx.globalCompositeOperation = 'source-over';
+      lctx.globalCompositeOperation = "source-over";
     }
     return layer;
   }
@@ -204,7 +216,7 @@ export class Renderer {
     const ink = `rgb(${r} ${g} ${b})`;
     const family = this.cfg.font.family;
 
-    ctx.textBaseline = 'alphabetic';
+    ctx.textBaseline = "alphabetic";
     ctx.fillStyle = ink;
 
     for (const line of lines) {
@@ -259,8 +271,9 @@ export class Renderer {
   toBlob(quality = 0.95): Promise<Blob> {
     return new Promise((resolve, reject) => {
       this.canvas.toBlob(
-        blob => (blob ? resolve(blob) : reject(new Error('jpeg encode failed'))),
-        'image/jpeg',
+        (blob) =>
+          blob ? resolve(blob) : reject(new Error("jpeg encode failed")),
+        "image/jpeg",
         quality,
       );
     });
@@ -270,8 +283,9 @@ export class Renderer {
   toPngBlob(): Promise<Blob> {
     return new Promise((resolve, reject) => {
       this.canvas.toBlob(
-        blob => (blob ? resolve(blob) : reject(new Error('png encode failed'))),
-        'image/png',
+        (blob) =>
+          blob ? resolve(blob) : reject(new Error("png encode failed")),
+        "image/png",
       );
     });
   }

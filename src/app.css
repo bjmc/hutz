@@ -1,6 +1,6 @@
 @font-face {
-  font-family: 'CardFont';
-  src: url('../assets/fonts/card-font.woff2') format('woff2');
+  font-family: "CardFont";
+  src: url("../assets/fonts/card-font.woff2") format("woff2");
   font-style: normal;
   font-weight: 500;
   font-display: block;
@@ -29,7 +29,12 @@ body {
 body {
   background: var(--yellow);
   color: var(--ink);
-  font: 500 16px/1.5 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font:
+    500 16px/1.5 ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
   display: grid;
   place-items: center;
   padding: var(--gap);
@@ -55,7 +60,9 @@ body {
   background: var(--paper);
   border-radius: 6px;
   overflow: hidden;
-  box-shadow: 0 1px 0 rgb(0 0 0 / 12%), 0 14px 40px -18px rgb(0 0 0 / 45%);
+  box-shadow:
+    0 1px 0 rgb(0 0 0 / 12%),
+    0 14px 40px -18px rgb(0 0 0 / 45%);
 }
 
 .card canvas {
@@ -71,7 +78,9 @@ body {
   padding: 22px;
   background: var(--paper);
   border-radius: 6px;
-  box-shadow: 0 1px 0 rgb(0 0 0 / 12%), 0 14px 40px -18px rgb(0 0 0 / 45%);
+  box-shadow:
+    0 1px 0 rgb(0 0 0 / 12%),
+    0 14px 40px -18px rgb(0 0 0 / 45%);
 }
 
 .panel h1 {
@@ -98,7 +107,7 @@ body {
   width: 100%;
   padding: 10px 12px;
   font: inherit;
-  font-family: 'CardFont', ui-monospace, monospace;
+  font-family: "CardFont", ui-monospace, monospace;
   font-style: normal;
   font-size: 1.05rem;
   line-height: 1.35;
@@ -115,7 +124,7 @@ body {
   border-color: var(--yellow-deep);
 }
 
-.field input[aria-invalid='true'] {
+.field input[aria-invalid="true"] {
   border-color: #b3261e;
 }
 

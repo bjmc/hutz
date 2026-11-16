@@ -25,7 +25,7 @@ export interface Mark {
 }
 
 /** The three editable lines of the card. */
-export type Field = 'header' | 'top' | 'bottom';
+export type Field = "header" | "top" | "bottom";
 
 export interface LineSlot {
   band: string;

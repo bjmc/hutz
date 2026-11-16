@@ -43,9 +43,13 @@ compare path="preview/money-down.jpg":
 dev:
     bun run dev
 
-# Type-check the TypeScript
+# Linting + typechecking
 check:
+    bun fmt --check
     bun run typecheck
+
+format:
+    bun fmt
 
 # Run the unit tests
 test:

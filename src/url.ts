@@ -3,8 +3,8 @@
  *
  * Short keys keep the fragment readable: `#h=LIONEL+HUTZ&t=...&b=...`.
  */
-import { DEFAULTS } from './config';
-import type { CardState } from './types';
+import { DEFAULTS } from "./config";
+import type { CardState } from "./types";
 
 /** Encode state into the fragment, replacing the current history entry. */
 export function writeHash(state: CardState): void {
@@ -13,7 +13,7 @@ export function writeHash(state: CardState): void {
     t: state.top,
     b: state.bottom,
   });
-  history.replaceState(null, '', `#${params}`);
+  history.replaceState(null, "", `#${params}`);
 }
 
 /**
@@ -26,13 +26,13 @@ export function writeHash(state: CardState): void {
 export function readHash(): CardState {
   if (!location.hash.length) return DEFAULTS;
   const params = new URLSearchParams(location.hash.slice(1));
-  const header = params.get('h');
-  const top = params.get('t');
-  const bottom = params.get('b');
+  const header = params.get("h");
+  const top = params.get("t");
+  const bottom = params.get("b");
   if (header === null && top === null && bottom === null) return DEFAULTS;
   return {
-    header: header ?? '',
-    top: top ?? '',
-    bottom: bottom ?? '',
+    header: header ?? "",
+    top: top ?? "",
+    bottom: bottom ?? "",
   };
 }

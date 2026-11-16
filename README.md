@@ -22,3 +22,4 @@ just dev # Runs a test server on http://localhost:5173
 just build # Outputs single static file dist/index.html
 ```
 
+The output dist/index.html is a [single-file standalone build](https://bun.com/docs/bundler/standalone-html) so anyone who cares to can download or save it without needing a web server. It should just open from disk in any browser.

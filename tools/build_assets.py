@@ -11,7 +11,6 @@ mask is warped back so the source image itself is never resampled.
 Stage 2 (`make_header_assets.py`) then takes `cleaned-body.png` and erases the
 printed name, producing the `plate.jpg` the app ships.
 """
-import json
 import re
 import subprocess
 import sys
@@ -433,25 +432,14 @@ def main():
     card, red = card_marks()
     n, lab, stats, _ = cv2.connectedComponentsWithStats(red, 8)
     marks = group_marks(lab, stats, card, n)
-    traced = [trace_mark(m["name"], card, lab, m["ids"], m["box"],
-                         dot_ids=m["dot_ids"], dot_box=m.get("dot_box"),
-                         ellipse_only=(m["role"] == "dot"))
-              for m in marks]
-    traced = [t for t in traced if t]
-    print(f"{len(traced)} mark(s) traced in card space")
+    drawn = 0
+    for m in marks:
+        if trace_mark(m["name"], card, lab, m["ids"], m["box"],
+                      dot_ids=m["dot_ids"], dot_box=m.get("dot_box"),
+                      ellipse_only=(m["role"] == "dot")):
+            drawn += 1
+    print(f"{drawn} mark(s) traced in card space")
 
-    manifest = dict(
-        source=dict(file="original.jpg", width=960, height=720),
-        roi=dict(x=ROI[0], y=ROI[1], w=ROI[2], h=ROI[3]),
-        deskew_deg=round(angle, 2),
-        # three physical lines, two logical inputs: the top field wraps A+B
-        lines=[dict(band=n, y0=y0, y1=y1, field=f, text=t)
-               for n, y0, y1, f, t, _below in BANDS],
-        plate=dict(file="card/plate.jpg",
-                   width=int(plate.shape[1]), height=int(plate.shape[0])),
-        marks=traced,
-    )
-    json.dump(manifest, open(OUT / "manifest.json", "w"), indent=2)
     print(f"wrote {OUT}")
 
 

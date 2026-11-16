@@ -5,7 +5,7 @@
  * assert relationships ("this must equal that advance width") rather than magic
  * pixel numbers that would rot if the font were ever re-vendored.
  */
-import type { CardConfig } from '../src/types';
+import type { CardConfig } from "../src/types";
 
 export const CARD = { width: 1000, height: 800 };
 
@@ -23,12 +23,12 @@ export function makeConfig(overrides: Partial<CardConfig> = {}): CardConfig {
     // the identity, so card space and image space coincide
     homography: [1, 0, 0, 0, 1, 0, 0, 0, 1],
     ink: { colour: [25, 11, 10] },
-    font: { family: 'CardFont', weight: 500 },
+    font: { family: "CardFont", weight: 500 },
     lines: [
-      slot('H', 'header', 100),
-      slot('A', 'top', 300),
-      slot('B', 'top', 400),
-      slot('C', 'bottom', 600),
+      slot("H", "header", 100),
+      slot("A", "top", 300),
+      slot("B", "top", 400),
+      slot("C", "bottom", 600),
     ],
     fields: {
       // the box starts at the printed width and may grow to the card edges
@@ -37,27 +37,33 @@ export function makeConfig(overrides: Partial<CardConfig> = {}): CardConfig {
       bottom: { center: BOX.center, half: BOX.half, min_x: 10, max_x: 990 },
     },
     marks: {
-      '?': mark(20, 40, 10),
-      '!': mark(10, 40, 4, 0.2),
-      ':': {
+      "?": mark(20, 40, 10),
+      "!": mark(10, 40, 4, 0.2),
+      ":": {
         w: 10,
         h: 44,
         bottom: 6,
         size: SIZE,
         parts: [
-          { svg: 'period', dx: 0, dy: 24, w: 10, h: 8, rot: 0 },
-          { svg: 'period', dx: 0, dy: 0, w: 12, h: 10, rot: 0 },
+          { svg: "period", dx: 0, dy: 24, w: 10, h: 8, rot: 0 },
+          { svg: "period", dx: 0, dy: 0, w: 12, h: 10, rot: 0 },
         ],
       },
     },
-    watermark: { text: '', size: 15, margin: 14, colour: [255, 255, 255], alpha: 0.5 },
+    watermark: {
+      text: "",
+      size: 15,
+      margin: 14,
+      colour: [255, 255, 255],
+      alpha: 0.5,
+    },
   };
   return { ...base, ...overrides };
 }
 
 function slot(
   band: string,
-  field: 'header' | 'top' | 'bottom',
+  field: "header" | "top" | "bottom",
   baseline: number,
 ) {
   return { band, field, baseline, size: SIZE, letter_space: 0, word_space: 1 };
@@ -69,7 +75,7 @@ function mark(w: number, h: number, bottom: number, pad?: number) {
     h,
     bottom,
     size: SIZE,
-    parts: [{ svg: 'qmark', dx: 0, dy: 0, w, h, rot: 0 }],
+    parts: [{ svg: "qmark", dx: 0, dy: 0, w, h, rot: 0 }],
     ...(pad === undefined ? {} : { pad }),
   };
   return m;

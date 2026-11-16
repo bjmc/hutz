@@ -5,14 +5,14 @@
  * returns a null 2D context. `@napi-rs/canvas` rasterises the actual woff2 we
  * ship, so layout and rendering both run against the real font.
  */
-import { createCanvas, GlobalFonts, loadImage } from '@napi-rs/canvas';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { createCanvas, GlobalFonts, loadImage } from "@napi-rs/canvas";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 
-import { CONFIG } from '../src/config';
-import { markDataUri } from '../src/marks';
+import { CONFIG } from "../src/config";
+import { markDataUri } from "../src/marks";
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 let registered = false;
 
@@ -20,28 +20,23 @@ let registered = false;
 export function useRealFont(): void {
   if (registered) return;
   const ok = GlobalFonts.registerFromPath(
-    resolve(ROOT, 'assets/fonts/card-font.woff2'),
-    'CardFont',
+    resolve(ROOT, "assets/fonts/card-font.woff2"),
+    "CardFont",
   );
-  if (!ok) throw new Error('could not register assets/fonts/card-font.woff2');
+  if (!ok) throw new Error("could not register assets/fonts/card-font.woff2");
   registered = true;
 }
 
 /** A canvas context that measures against the real font. */
-export function realContext(
-  width = 8,
-  height = 8,
-): CanvasRenderingContext2D {
+export function realContext(width = 8, height = 8): CanvasRenderingContext2D {
   useRealFont();
-  return createCanvas(width, height).getContext('2d') as unknown as
-    CanvasRenderingContext2D;
+  return createCanvas(width, height).getContext(
+    "2d",
+  ) as unknown as CanvasRenderingContext2D;
 }
 
 /** A canvas that can be handed to Renderer in place of a DOM one. */
-export function realCanvas(
-  width: number,
-  height: number,
-): HTMLCanvasElement {
+export function realCanvas(width: number, height: number): HTMLCanvasElement {
   useRealFont();
   return createCanvas(width, height) as unknown as HTMLCanvasElement;
 }
@@ -53,8 +48,8 @@ export async function loadCardAssets(): Promise<{
 }> {
   useRealFont();
   const [plate, fingers] = await Promise.all([
-    loadImage(resolve(ROOT, 'assets/card/plate.jpg')),
-    loadImage(resolve(ROOT, 'assets/card/fingers.png')),
+    loadImage(resolve(ROOT, "assets/card/plate.jpg")),
+    loadImage(resolve(ROOT, "assets/card/fingers.png")),
   ]);
   return {
     plate: plate as unknown as HTMLImageElement,
@@ -65,13 +60,13 @@ export async function loadCardAssets(): Promise<{
 /** A loaded image for one traced mark vector. */
 export async function loadMark(svg: string): Promise<HTMLImageElement> {
   useRealFont();
-  return await loadImage(markDataUri(svg)) as unknown as HTMLImageElement;
+  return (await loadImage(markDataUri(svg))) as unknown as HTMLImageElement;
 }
 
 /** Every mark vector the config refers to, keyed by svg name. */
 export async function loadMarks(): Promise<Map<string, HTMLImageElement[]>> {
   const names = new Set(
-    Object.values(CONFIG.marks).flatMap(m => m.parts.map(p => p.svg)),
+    Object.values(CONFIG.marks).flatMap((m) => m.parts.map((p) => p.svg)),
   );
   const out = new Map<string, HTMLImageElement[]>();
   for (const name of names) out.set(name, [await loadMark(name)]);
@@ -89,7 +84,7 @@ export function installDocumentShim(): void {
   if (g.document) return;
   g.document = {
     createElement(tag: string) {
-      if (tag !== 'canvas') throw new Error(`unsupported element: ${tag}`);
+      if (tag !== "canvas") throw new Error(`unsupported element: ${tag}`);
       return realCanvas(1, 1);
     },
   };
@@ -97,7 +92,7 @@ export function installDocumentShim(): void {
 
 /** Pixels with any alpha, i.e. how much of the layer was drawn on. */
 export function inkedPixels(canvas: HTMLCanvasElement): number {
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext("2d")!;
   const { width, height } = canvas;
   const d = ctx.getImageData(0, 0, width, height).data;
   let n = 0;
@@ -113,7 +108,7 @@ export function countPixels(
   canvas: HTMLCanvasElement,
   test: (r: number, g: number, b: number, a: number) => boolean,
 ): number {
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext("2d")!;
   const { width, height } = canvas;
   const d = ctx.getImageData(0, 0, width, height).data;
   let n = 0;
@@ -129,11 +124,7 @@ export function countPixels(
  * Assertions use this rather than magic numbers, so they keep meaning if the
  * font is ever re-vendored: the test states the relationship, not the value.
  */
-export function advance(
-  text: string,
-  size: number,
-  weight = 500,
-): number {
+export function advance(text: string, size: number, weight = 500): number {
   const ctx = realContext();
   ctx.font = `${weight} ${size}px CardFont`;
   return ctx.measureText(text).width;

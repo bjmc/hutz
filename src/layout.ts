@@ -1,9 +1,15 @@
 import type {
-  CardConfig, Field, LineSlot, Mark, PlacedGlyph, PlacedLine, PlacedMark,
-} from './types';
+  CardConfig,
+  Field,
+  LineSlot,
+  Mark,
+  PlacedGlyph,
+  PlacedLine,
+  PlacedMark,
+} from "./types";
 
 interface GlyphItem {
-  kind: 'glyph';
+  kind: "glyph";
   ch: string;
   advance: number;
   /** Horizontal shift applied before drawing, from the font's kerning pair. */
@@ -13,12 +19,12 @@ interface GlyphItem {
 }
 
 interface SpaceItem {
-  kind: 'space';
+  kind: "space";
   advance: number;
 }
 
 interface MarkItem {
-  kind: 'mark';
+  kind: "mark";
   mark: Mark;
   advance: number;
   /** Offset from the pen to the mark's left edge, centring it in its advance. */
@@ -52,22 +58,21 @@ interface Box {
   x1: number;
 }
 
-const MARK_GAP = 0.06;      // of size, between the last letter and its edit mark
+const MARK_GAP = 0.06; // of size, between the last letter and its edit mark
 
 export class Layout {
   constructor(
     private ctx: CanvasRenderingContext2D,
     private cfg: CardConfig,
-  ) { }
+  ) {}
 
   private fontAt(size: number): void {
-    this.ctx.font =
-      `${this.cfg.font.weight} ${size}px ${this.cfg.font.family}`;
+    this.ctx.font = `${this.cfg.font.weight} ${size}px ${this.cfg.font.family}`;
   }
 
   /** The card only ever holds capitals with single spaces between words. */
   private normalise(raw: string): string {
-    return raw.toUpperCase().replace(/\s+/g, ' ').trim();
+    return raw.toUpperCase().replace(/\s+/g, " ").trim();
   }
 
   private items(text: string, size: number, wordSpace: number): Item[] {
@@ -79,7 +84,7 @@ export class Layout {
     let prev: string | null = null;
 
     for (const ch of text) {
-      if (swallowSpace && ch === ' ') continue;
+      if (swallowSpace && ch === " ") continue;
       swallowSpace = false;
 
       const mark = this.cfg.marks[ch];
@@ -88,7 +93,7 @@ export class Layout {
         const w = mark.w * scale;
         const pad = (MARK_GAP + (mark.pad ?? 0)) * size;
         out.push({
-          kind: 'mark',
+          kind: "mark",
           mark,
           advance: w + pad,
           shift: pad / 2,
@@ -101,8 +106,8 @@ export class Layout {
         continue;
       }
 
-      if (ch === ' ') {
-        out.push({ kind: 'space', advance: wordSpace * size });
+      if (ch === " ") {
+        out.push({ kind: "space", advance: wordSpace * size });
         prev = null;
         continue;
       }
@@ -111,15 +116,16 @@ export class Layout {
       // advance would land it, so it has to be carried on the glyph itself;
       // folding it into the previous advance would gap the wrong side.
       const m = this.ctx.measureText(ch);
-      const kern = prev === null
-        ? 0
-        : this.ctx.measureText(prev + ch).width
-        - this.ctx.measureText(prev).width
-        - m.width;
+      const kern =
+        prev === null
+          ? 0
+          : this.ctx.measureText(prev + ch).width -
+            this.ctx.measureText(prev).width -
+            m.width;
       prev = ch;
 
       out.push({
-        kind: 'glyph',
+        kind: "glyph",
         ch,
         advance: m.width,
         kern,
@@ -148,7 +154,7 @@ export class Layout {
     for (let i = 0; i < items.length; i++) {
       const it = items[i]!;
       // kerns accumulate down the run, exactly as the shaper would place them
-      if (it.kind === 'glyph') pen += it.kern;
+      if (it.kind === "glyph") pen += it.kern;
       visit(it, pen);
       pen += it.advance + track;
     }
@@ -168,7 +174,7 @@ export class Layout {
     let seen = false;
 
     this.walk(items, track, (it, pen) => {
-      if (it.kind !== 'glyph') return;
+      if (it.kind !== "glyph") return;
       if (!seen) {
         first = pen + it.left;
         seen = true;
@@ -187,16 +193,12 @@ export class Layout {
   private lastGlyphIndex(items: Item[]): number {
     let last = -1;
     for (let i = 0; i < items.length; i++) {
-      if (items[i]!.kind === 'glyph') last = i;
+      if (items[i]!.kind === "glyph") last = i;
     }
     return last;
   }
 
-  private place(
-    text: string,
-    slot: LineSlot,
-    box: Box,
-  ): FittedLine {
+  private place(text: string, slot: LineSlot, box: Box): FittedLine {
     const all = this.items(text, slot.size, slot.word_space);
     const track = this.trackFor(slot.size, slot.letter_space);
 
@@ -208,7 +210,7 @@ export class Layout {
     // centre the run's ink in the box, advancing by the font's own metrics
     const natural = this.span(body, track);
     const lead = body[0];
-    const offset = lead !== undefined && lead.kind === 'glyph' ? lead.left : 0;
+    const offset = lead !== undefined && lead.kind === "glyph" ? lead.left : 0;
     // centre the run's ink in the field's box, then apply this line's nudge:
     // the box is shared so wrapped lines reflow together, the nudge is not
     const start =
@@ -220,12 +222,12 @@ export class Layout {
     let inkRight = -Infinity;
     let markRight = -Infinity;
     const push = (it: Item, pen: number): void => {
-      if (it.kind === 'glyph') {
+      if (it.kind === "glyph") {
         glyphs.push({ ch: it.ch, x: pen });
         inkLeft = Math.min(inkLeft, pen + it.left);
         inkRight = Math.max(inkRight, pen + it.right);
       }
-      if (it.kind === 'mark') {
+      if (it.kind === "mark") {
         marks.push({
           mark: it.mark,
           x: pen + it.shift,
@@ -254,16 +256,18 @@ export class Layout {
   }
 
   private slots(field: Field) {
-    return this.cfg.lines.filter(l => l.field === field);
+    return this.cfg.lines.filter((l) => l.field === field);
   }
 
   /** Debug hook: natural width of a run before any centring. */
   measure(raw: string, field: Field): number[] {
     const slots = this.slots(field);
     const text = this.normalise(raw);
-    return slots.map(s =>
-      this.span(this.items(text, s.size, s.word_space),
-        this.trackFor(s.size, s.letter_space)),
+    return slots.map((s) =>
+      this.span(
+        this.items(text, s.size, s.word_space),
+        this.trackFor(s.size, s.letter_space),
+      ),
     );
   }
 
@@ -334,11 +338,11 @@ export class Layout {
 
       let j = i + 1;
       while (j < words.length) {
-        const candidate = words.slice(i, j + 1).join(' ');
+        const candidate = words.slice(i, j + 1).join(" ");
         if (!this.fitsRun(candidate, slot, box)) break;
         j++;
       }
-      lines.push(words.slice(i, j).join(' '));
+      lines.push(words.slice(i, j).join(" "));
       i = j;
     }
 
@@ -352,11 +356,7 @@ export class Layout {
    * the line was written, so it may hang past the last letter. It still has to
    * fall inside the printed card, which is what `max_x` records.
    */
-  private fitsRun(
-    text: string,
-    slot: LineSlot,
-    box: Box,
-  ): boolean {
+  private fitsRun(text: string, slot: LineSlot, box: Box): boolean {
     // the nudge is a cosmetic shift applied after fitting; if it took part in
     // this test the box would grow to accommodate it, which would then move
     // the centred run back the other way
@@ -374,7 +374,7 @@ export class Layout {
     const text = this.normalise(raw);
     if (!text) return true;
     if (!this.slots(field).length) return false;
-    return !this.wrap(text.split(' '), field).overflow;
+    return !this.wrap(text.split(" "), field).overflow;
   }
 
   /**
@@ -388,9 +388,9 @@ export class Layout {
     const text = this.normalise(raw);
     if (this.fits(text, field)) return text;
 
-    const words = text.split(' ');
-    let best = '';
-    let taken = '';
+    const words = text.split(" ");
+    let best = "";
+    let taken = "";
 
     for (const word of words) {
       const candidate = taken ? `${taken} ${word}` : word;
@@ -401,7 +401,9 @@ export class Layout {
       }
       // this word does not fit whole: keep as much of it as the card allows
       for (let i = 1; i <= word.length; i++) {
-        const partial = taken ? `${taken} ${word.slice(0, i)}` : word.slice(0, i);
+        const partial = taken
+          ? `${taken} ${word.slice(0, i)}`
+          : word.slice(0, i);
         if (this.fits(partial, field)) best = partial;
         else break;
       }
@@ -418,7 +420,7 @@ export class Layout {
     const text = this.normalise(raw);
     if (!text) return [];
 
-    const { lines, box } = this.wrap(text.split(' '), field);
+    const { lines, box } = this.wrap(text.split(" "), field);
 
     return lines.map((line, k) => {
       const slot = slots[Math.min(k, slots.length - 1)]!;

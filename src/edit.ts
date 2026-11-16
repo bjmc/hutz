@@ -8,7 +8,7 @@
  * - a trailing space survives, or a second word could never be started;
  * - the value the card renders is the trimmed text, not what the field shows.
  */
-import type { Field } from './types';
+import type { Field } from "./types";
 
 export interface Edit {
   /** The text the card should render: trimmed and clamped. */
@@ -30,7 +30,7 @@ export function editField(
   field: Field,
   clamp: (text: string, field: Field) => string,
 ): Edit {
-  const upper = raw.toUpperCase().replace(/\s+/g, ' ');
+  const upper = raw.toUpperCase().replace(/\s+/g, " ");
   const value = clamp(upper, field);
 
   // keep the space the user just typed, or they can never type a second word

@@ -6,9 +6,9 @@
  * HTML into the single-file build. The mark vectors are imported as text and
  * turned into data URIs, so nothing is fetched at runtime.
  */
-import { CONFIG } from './config';
-import { markDataUri } from './marks';
-import type { Assets } from './types';
+import { CONFIG } from "./config";
+import { markDataUri } from "./marks";
+import type { Assets } from "./types";
 
 /** The element with this id, or a clear failure if the markup is wrong. */
 export function el<T extends HTMLElement>(id: string): T {
@@ -21,7 +21,7 @@ export function el<T extends HTMLElement>(id: string): T {
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.decoding = 'sync';
+    img.decoding = "sync";
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error(`failed to load ${src}`));
     img.src = src;
@@ -33,28 +33,31 @@ async function inlinedImage(id: string): Promise<HTMLImageElement> {
   const img = el<HTMLImageElement>(id);
   if (img.complete) return img;
   await new Promise<void>((resolve, reject) => {
-    img.addEventListener('load', () => resolve(), { once: true });
-    img.addEventListener('error', () => reject(new Error(`${id} failed`)),
-      { once: true });
+    img.addEventListener("load", () => resolve(), { once: true });
+    img.addEventListener("error", () => reject(new Error(`${id} failed`)), {
+      once: true,
+    });
   });
   return img;
 }
 
 export async function loadAssets(): Promise<Assets> {
   const [plate, fingers] = await Promise.all([
-    inlinedImage('plate'),
-    inlinedImage('fingers'),
+    inlinedImage("plate"),
+    inlinedImage("fingers"),
   ]);
 
   // keyed by SVG name: `:` and `;` both draw the period vector, and the four
   // dash-derived marks share one bar, so each vector is loaded exactly once
   const names = new Set(
-    Object.values(CONFIG.marks).flatMap(m => m.parts.map(p => p.svg)),
+    Object.values(CONFIG.marks).flatMap((m) => m.parts.map((p) => p.svg)),
   );
   const marks = new Map<string, HTMLImageElement[]>(
     await Promise.all(
-      [...names].map(async (n): Promise<[string, HTMLImageElement[]]> =>
-        [n, [await loadImage(markDataUri(n))]]),
+      [...names].map(async (n): Promise<[string, HTMLImageElement[]]> => [
+        n,
+        [await loadImage(markDataUri(n))],
+      ]),
     ),
   );
   return { plate, fingers, marks };
