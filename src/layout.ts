@@ -93,6 +93,22 @@ function clamp01(v: number): number {
 }
 
 export class Layout {
+  /**
+   * Glyph metrics, keyed by size and character.
+   *
+   * The fitter rebuilds a run nine or ten times per call, at several type
+   * sizes, so without this the same handful of characters is measured hundreds
+   * of times for a single keystroke. `measureText` is the dominant cost, and
+   * the answer never varies for a given size and character.
+   *
+   * Sizes are exact doubles, and the bisection visits the same ones on every
+   * call, so this stays small and hits repeatedly.
+   */
+  private metrics = new Map<string, { advance: number; left: number; right: number }>();
+
+  /** Kerning adjustments, keyed by size and the pair as drawn. */
+  private kerns = new Map<string, number>();
+
   constructor(
     private ctx: CanvasRenderingContext2D,
     private cfg: CardConfig,
@@ -100,6 +116,37 @@ export class Layout {
 
   private fontAt(size: number): void {
     this.ctx.font = `${this.cfg.font.weight} ${size}px ${this.cfg.font.family}`;
+  }
+
+  /** Advance and ink bounds of one character, measured at most once per size. */
+  private glyph(size: number, ch: string): {
+    advance: number; left: number; right: number;
+  } {
+    const key = `${size}|${ch}`;
+    const hit = this.metrics.get(key);
+    if (hit) return hit;
+    this.fontAt(size);
+    const m = this.ctx.measureText(ch);
+    const out = {
+      advance: m.width,
+      left: -m.actualBoundingBoxLeft,
+      right: m.actualBoundingBoxRight,
+    };
+    this.metrics.set(key, out);
+    return out;
+  }
+
+  /** Kern adjustment for a pair, so the font's own spacing is preserved. */
+  private kern(size: number, prev: string, ch: string): number {
+    const key = `${size}|${prev}${ch}`;
+    const hit = this.kerns.get(key);
+    if (hit !== undefined) return hit;
+    this.fontAt(size);
+    const k = this.ctx.measureText(prev + ch).width -
+      this.glyph(size, prev).advance -
+      this.glyph(size, ch).advance;
+    this.kerns.set(key, k);
+    return k;
   }
 
   /** The card only ever holds capitals with single spaces between words. */
@@ -147,22 +194,17 @@ export class Layout {
       // The font's kern pair moves this glyph relative to where the previous
       // advance would land it, so it has to be carried on the glyph itself;
       // folding it into the previous advance would gap the wrong side.
-      const m = this.ctx.measureText(ch);
-      const kern =
-        prev === null
-          ? 0
-          : this.ctx.measureText(prev + ch).width -
-          this.ctx.measureText(prev).width -
-          m.width;
+      const m = this.glyph(size, ch);
+      const kern = prev === null ? 0 : this.kern(size, prev, ch);
       prev = ch;
 
       out.push({
         kind: "glyph",
         ch,
-        advance: m.width,
+        advance: m.advance,
         kern,
-        left: -m.actualBoundingBoxLeft,
-        right: m.actualBoundingBoxRight,
+        left: m.left,
+        right: m.right,
       });
     }
     return out;
