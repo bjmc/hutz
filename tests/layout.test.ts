@@ -334,3 +334,44 @@ describe("Layout squeeze", () => {
     expect(layout.fits(words(40), "bottom")).toBe(false);
   });
 });
+
+describe("Layout squeeze order", () => {
+  // wide glyphs so a few words are enough to exhaust the box
+  const runs = (n: number) =>
+    Array.from({ length: n }, () => "MMMM").join(" ");
+
+  /** Letter advance and word gap, normalised by the type size. */
+  const metrics = (text: string) => {
+    const line = layout.build(text, "bottom")[0]!;
+    const xs = line.glyphs.map((g) => g.x);
+    const steps: number[] = [];
+    for (let i = 1; i < xs.length; i++) steps.push(xs[i]! - xs[i - 1]!);
+    const sorted = [...steps].sort((a, b) => a - b);
+    return {
+      letter: sorted[0]! / line.size,
+      word: sorted[sorted.length - 1]! / line.size,
+      scale: line.size / SIZE,
+    };
+  };
+
+  test("word gaps narrow before letter tracking does", () => {
+    // at this length the run only fits by closing the word space: the type is
+    // still at full size and the letter advance has not moved
+    const loose = metrics(runs(5));
+    const tight = metrics(runs(6));
+    expect(tight.scale).toBeCloseTo(1, 5);
+    expect(tight.word).toBeLessThan(loose.word);
+    expect(tight.letter).toBeCloseTo(loose.letter, 5);
+  });
+
+  test("letters never tighten while the word space still has room", () => {
+    // the letter advance is identical at every full-size stage, however far the
+    // word space has been closed down
+    const reference = metrics(runs(4));
+    for (const n of [5, 6]) {
+      const m = metrics(runs(n));
+      expect(m.scale).toBeCloseTo(1, 5);
+      expect(m.letter).toBeCloseTo(reference.letter, 5);
+    }
+  });
+});

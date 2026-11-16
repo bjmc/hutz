@@ -61,13 +61,17 @@ interface Box {
 /**
  * How a slot's spacing and size have been relaxed to fit more text.
  *
- * `box` is the justification width, `pack` tightens the spacing and `scale`
- * shrinks the type. Together they are one point on the fit axis.
+ * Together these are one point on the fit axis. They are kept separate rather
+ * than collapsed into one "pack" figure because word spaces are wide next to
+ * the font's own gap, so they are the cheapest thing to give up and must be
+ * spent before letter tracking is touched.
  */
 interface Stage {
   box: Box;
+  /** 0 = printed word space, 1 = the narrowest allowed by `fit`. */
+  words: number;
   /** 0 = printed tracking, 1 = the tightest allowed by `fit`. */
-  pack: number;
+  letters: number;
   /** 1 = printed size, `fit.min_scale` = the smallest allowed. */
   scale: number;
 }
@@ -79,8 +83,8 @@ interface Fitted {
   stage: Stage;
 }
 
-/** The end of the fit axis: all three measures fully spent. */
-const MAX_PROGRESS = 3;
+/** The end of the fit axis: every measure fully spent. */
+const MAX_PROGRESS = 4;
 
 const MARK_GAP = 0.06; // of size, between the last letter and its edit mark
 
@@ -92,7 +96,7 @@ export class Layout {
   constructor(
     private ctx: CanvasRenderingContext2D,
     private cfg: CardConfig,
-  ) {}
+  ) { }
 
   private fontAt(size: number): void {
     this.ctx.font = `${this.cfg.font.weight} ${size}px ${this.cfg.font.family}`;
@@ -148,8 +152,8 @@ export class Layout {
         prev === null
           ? 0
           : this.ctx.measureText(prev + ch).width -
-            this.ctx.measureText(prev).width -
-            m.width;
+          this.ctx.measureText(prev).width -
+          m.width;
       prev = ch;
 
       out.push({
@@ -302,18 +306,24 @@ export class Layout {
   /**
    * Fit `words` by spending the cheapest measures first.
    *
-   * The three measures are laid end to end on one axis, `p` in [0, 3]:
+   * The measures are laid end to end on one axis, `p` in [0, 4]:
    *
    *   0..1  widen the justification box towards the card's edges
-   *   1..2  tighten tracking and word spaces towards the printed minimum
-   *   2..3  shrink the type towards `fit.min_scale`
+   *   1..2  narrow the word spaces towards `fit.word_space`
+   *   2..3  tighten letter tracking towards `fit.letter_space`
+   *   3..4  shrink the type towards `fit.min_scale`
    *
    * Each measure only starts once the previous one is exhausted, so the result
-   * is always the least distorted typesetting that still holds the text. The
-   * box never shrinks as `p` grows, which is what makes a bisection valid: the
-   * smallest `p` that fits is the whole answer.
+   * is always the least distorted typesetting that still holds the text. Word
+   * spaces go before letter tracking because they are far wider than the font's
+   * own gap, so closing them costs legibility far more slowly than crushing the
+   * letters together would.
    *
-   * Returns `overflow` when even `p = 3` cannot hold the text.
+   * Every measure is continuous in `p`, which is what lets one bisection find
+   * the answer: the smallest `p` that fits is the least distortion available,
+   * and no measure ever makes the text *less* likely to fit as `p` grows.
+   *
+   * Returns `overflow` when even `p = 4` cannot hold the text.
    */
   private fit(words: string[], field: Field): Fitted {
     const base = this.at(field, 0);
@@ -343,8 +353,9 @@ export class Layout {
     const { min_scale } = this.cfg.fit;
     return {
       box: this.boxAt(field, clamp01(p)),
-      pack: clamp01(p - 1),
-      scale: p <= 2 ? 1 : 1 + clamp01(p - 2) * (min_scale - 1),
+      words: clamp01(p - 1),
+      letters: clamp01(p - 2),
+      scale: p <= 3 ? 1 : 1 + clamp01(p - 3) * (min_scale - 1),
     };
   }
 
@@ -367,13 +378,13 @@ export class Layout {
    */
   private slotAt(slot: LineSlot, stage: Stage): LineSlot {
     const { letter_space, word_space } = this.cfg.fit;
-    const { pack, scale } = stage;
+    const { words, letters, scale } = stage;
     return {
       ...slot,
       size: slot.size * scale,
       letter_space:
-        slot.letter_space + pack * (letter_space - slot.letter_space),
-      word_space: slot.word_space + pack * (word_space - slot.word_space),
+        slot.letter_space + letters * (letter_space - slot.letter_space),
+      word_space: slot.word_space + words * (word_space - slot.word_space),
       // the nudge is measured in card pixels at printed size, so it shrinks
       // with the type rather than pushing the line progressively off-centre
       nudge: (slot.nudge ?? 0) * scale,
