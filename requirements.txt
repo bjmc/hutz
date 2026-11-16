@@ -1,0 +1,16 @@
+# Authoring-only dependencies for the Python tools in tools/.
+#
+# The site itself needs none of this: every asset these tools produce is
+# committed, so `just build` and the tests need only Bun. These packages are
+# for re-deriving those assets from assets/source/original.jpg.
+#
+#   python3 -m venv .venv
+#   .venv/bin/python -m pip install -r requirements.txt
+#
+# Verified working on Python 3.12 against a clean venv containing only these.
+
+numpy==2.5.5
+opencv-python-headless==5.0.0.93
+cairosvg==2.9.1
+fonttools==4.68.0
+pillow==13.0.0

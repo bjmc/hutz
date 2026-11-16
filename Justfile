@@ -10,6 +10,11 @@ python := ".venv/bin/python"
 default:
     @just --list
 
+# Create Python .venv and install bootstrap dependencies
+python-env:
+    python3 -m venv .venv
+    {{python}} -m pip install -r requirements.txt
+
 # Re-derive the committed assets from the source image, then build the site
 pipeline: assets build
 
