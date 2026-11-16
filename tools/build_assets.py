@@ -12,9 +12,11 @@ Stage 2 (`make_header_assets.py`) then takes `cleaned-body.png` and erases the
 printed name, producing the `plate.jpg` the app ships.
 """
 
+import io
 import re
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import cv2
@@ -356,6 +358,167 @@ def trace_mark(
     )
 
 
+SVG_NS = "http://www.w3.org/2000/svg"
+ET.register_namespace("", SVG_NS)
+
+
+def parse_transform(text):
+    """A transform attribute as a 2x3 affine, (matrix, offset)."""
+    A, t = np.eye(2), np.zeros(2)
+    for name, args in re.findall(r"(\w+)\s*\(([^)]*)\)", text):
+        v = [float(x) for x in re.split(r"[,\s]+", args.strip()) if x]
+        if name == "translate":
+            M, o = np.eye(2), np.array(v[:2])
+        elif name == "scale":
+            M, o = np.diag([v[0], v[1] if len(v) > 1 else v[0]]), np.zeros(2)
+        elif name == "matrix":
+            M = np.array([[v[0], v[2]], [v[1], v[3]]])
+            o = np.array(v[4:6])
+        elif name == "rotate":
+            a = np.radians(v[0])
+            R = np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
+            M, o = (
+                (R, np.array(v[1:3]) - R @ np.array(v[1:3]))
+                if len(v) == 3
+                else (R, np.zeros(2))
+            )
+        else:
+            raise ValueError(f"unsupported transform {name}")
+        A, t = A @ M, A @ o + t
+    return A, t
+
+
+def path_points(d, curve_samples=64):
+    """Every point on a path, with cubics sampled finely enough to bound them.
+
+    potrace emits only absolute/relative move, line and cubic, so this covers
+    all of it. Sampling is cheaper than solving each curve's derivative for its
+    extrema and is far below one raster pixel of error.
+    """
+    toks = re.findall(r"[MmLlCcZz]|-?\d*\.?\d+(?:[eE][-+]?\d+)?", d)
+    pts, cur, start = [], np.zeros(2), np.zeros(2)
+    cmd, i = None, 0
+    while i < len(toks):
+        if toks[i].isalpha():
+            cmd = toks[i]
+            i += 1
+            if cmd in "Zz":
+                cur = start
+                pts.append(cur)
+            continue
+        base = cur if cmd.islower() else np.zeros(2)
+        if cmd in "Mm":
+            cur = start = base + np.array([float(toks[i]), float(toks[i + 1])])
+            i += 2
+            pts.append(cur)
+            cmd = "l" if cmd.islower() else "L"
+        elif cmd in "Ll":
+            cur = base + np.array([float(toks[i]), float(toks[i + 1])])
+            i += 2
+            pts.append(cur)
+        elif cmd in "Cc":
+            c1 = base + np.array([float(toks[i]), float(toks[i + 1])])
+            c2 = base + np.array([float(toks[i + 2]), float(toks[i + 3])])
+            p = base + np.array([float(toks[i + 4]), float(toks[i + 5])])
+            i += 6
+            for s in np.linspace(0, 1, curve_samples):
+                u = 1 - s
+                pts.append(
+                    u**3 * cur + 3 * u**2 * s * c1 + 3 * u * s**2 * c2 + s**3 * p
+                )
+            cur = p
+        else:
+            raise ValueError(f"unsupported path command {cmd}")
+    return np.array(pts)
+
+
+def svg_paths(path):
+    """Each <path> in an SVG, in the root's coordinate system."""
+    root = ET.parse(path).getroot()
+
+    def walk(node, A, t):
+        for child in node:
+            tag = child.tag.split("}")[-1]
+            A2, t2 = (A, t)
+            if child.get("transform"):
+                M, o = parse_transform(child.get("transform"))
+                A2, t2 = A @ M, A @ o + t
+            if tag == "path":
+                yield path_points(child.get("d")) @ A2.T + t2
+            elif tag in ("g", "svg"):
+                yield from walk(child, A2, t2)
+
+    yield from walk(root, np.eye(2), np.zeros(2))
+
+
+def derive_dash(src=OUT / "bang.svg", dst=OUT / "dash.svg"):
+    """Build the dash from the traced bang by flattening its stroke.
+
+    The bang is a stroke plus a dot. Keep whichever path covers more area,
+    then rotate the stroke until it lies level: the angle is found by
+    maximising its horizontal extent, refined by a finer sweep. The committed
+    dash used to come from a separate script; folding it in keeps it in step
+    with the bang, which is retraced from the source image on every run.
+    """
+    groups = list(svg_paths(src))
+    if not groups:
+        raise RuntimeError(f"no paths in {src}")
+    areas = [np.ptp(g[:, 0]) * np.ptp(g[:, 1]) for g in groups]
+    keep = int(np.argmax(areas))
+    stroke = groups[keep]
+    lo, hi = stroke.min(axis=0), stroke.max(axis=0)
+    c = (lo + hi) / 2
+
+    def width_at(angle):
+        a = np.radians(angle)
+        R = np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
+        return np.ptp(((stroke - c) @ R.T)[:, 0])
+
+    best, best_w = -90.0, -1.0
+    for angle in np.arange(-130.0, -49.99, 0.25):
+        w = width_at(angle)
+        if w > best_w:
+            best, best_w = float(angle), w
+    for angle in np.arange(best - 0.25, best + 0.2501, 0.02):
+        w = width_at(angle)
+        if w > best_w:
+            best, best_w = float(angle), w
+
+    a = np.radians(best)
+    R = np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
+    flat = (stroke - c) @ R.T + c
+    x0, y0 = flat.min(axis=0)
+    w, h = np.ptp(flat[:, 0]), np.ptp(flat[:, 1])
+
+    # reuse the bang's own artwork, just wrapped in the flattening rotation,
+    # dropping the dot path so only the stroke becomes the dash
+    root = ET.parse(src).getroot()
+    root.set("viewBox", f"{x0:.4f} {y0:.4f} {w:.4f} {h:.4f}")
+    root.set("width", f"{w:.4f}")
+    root.set("height", f"{h:.4f}")
+    root.set("preserveAspectRatio", "none")
+    paths = [p for g in root.iter() for p in g if p.tag.split("}")[-1] == "path"]
+    for i, p in enumerate(paths):
+        if i == keep:
+            continue
+        for parent in root.iter():
+            if p in list(parent):
+                parent.remove(p)
+
+    wrap = ET.Element(f"{{{SVG_NS}}}g")
+    wrap.set("transform", f"rotate({best:.4f} {c[0]:.4f} {c[1]:.4f})")
+    for child in list(root):
+        root.remove(child)
+        wrap.append(child)
+    root.append(wrap)
+
+    buf = io.BytesIO()
+    ET.ElementTree(root).write(buf, encoding="utf-8", xml_declaration=False)
+    dst.write_text(buf.getvalue().decode() + "\n")
+    print(f"  dash     {w:.2f}x{h:.2f} from rotate({best:.2f}) ratio {w / h:.2f}:1")
+    return dst
+
+
 def group_marks(lab, stats, colour, n):
     """Merge red components that belong to one mark, then classify by shape."""
     reds = []
@@ -517,6 +680,9 @@ def main():
         ):
             drawn += 1
     print(f"{drawn} mark(s) traced in card space")
+
+    # the dash is derived from the bang just traced, so it stays in step with it
+    derive_dash()
 
     print(f"wrote {OUT}")
 

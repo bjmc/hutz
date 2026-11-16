@@ -16,7 +16,6 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-
 from geometry import CARD_H, CARD_W, QUAD
 
 ROOT = Path(__file__).resolve().parent.parent
