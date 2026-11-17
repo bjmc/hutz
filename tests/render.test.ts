@@ -175,6 +175,36 @@ describe("the hand is cut out of the ink", () => {
       countPixels(b, (r, g, bb) => r < 120 && g < 120 && bb < 120),
     );
   });
+
+  test("the matte covers the fingers all the way to the top of the image", () => {
+    // The fingers carry on past the card's top edge, and a tall header reaches
+    // into them. A matte built from the card alone stops short, and a mark then
+    // prints over the fingers.
+    const plate = realCanvas(CARD_W, CARD_H);
+    plate.getContext("2d")!.drawImage(assets.plate, 0, 0);
+    const p = plate
+      .getContext("2d")!
+      .getImageData(0, 0, CARD_W, CARD_H).data;
+    const mask = handMask();
+
+    let finger = 0;
+    let uncovered = 0;
+    let topmost = CARD_H;
+    for (let y = 0; y < 200; y++) {
+      for (let x = 0; x < CARD_W; x++) {
+        const i = (y * CARD_W + x) * 4;
+        const isFinger = p[i]! > 170 && p[i + 1]! > 150 && p[i + 2]! < 90;
+        if (!isFinger) continue;
+        finger++;
+        if (!mask[y * CARD_W + x]) uncovered++;
+        if (y < topmost) topmost = y;
+      }
+    }
+
+    expect(finger).toBeGreaterThan(5000);
+    expect(topmost).toBeLessThan(40);
+    expect(uncovered / finger).toBeLessThan(0.02);
+  });
 });
 
 describe("marks", () => {

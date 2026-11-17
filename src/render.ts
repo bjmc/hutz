@@ -112,6 +112,7 @@ export class Renderer {
     // them. Cutting the hand out of the ink layers leaves the plate's own
     // fingers visible, which is why no third layer is drawn.
     const hand = state.header.trim() ? this.assets.fingers : null;
+
     const ink = this.textLayer(width, height, lines, false, hand);
     ctx.save();
     ctx.globalCompositeOperation = "multiply";
@@ -121,7 +122,9 @@ export class Renderer {
     ctx.restore();
 
     // The marks are pen on paper, so their colour was already sampled from the
-    // screencap. Multiplying them again would darken that a second time.
+    // screencap. Multiplying them again would darken that a second time. They
+    // need their own layer because the hand mask has to cut them too: a mark
+    // typed where the fingers sit must not appear on top of them.
     const marks = this.textLayer(width, height, lines, true, hand);
     ctx.save();
     if ("filter" in ctx) ctx.filter = "blur(0.45px)";

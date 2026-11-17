@@ -33,9 +33,13 @@ BAND_Y = (INK_Y[0] - PAD, INK_Y[1] + PAD)
 BAND_X = (INK_X[0] - PAD, INK_X[1] + PAD)
 # the printed rule below the name, checked after the erase
 RULE_ROWS = (87, 88, 89)
+# card rows lifted above the card's top edge. The fingers carry on past the
+# card, and a mark drawn high on the card reaches into them; segmenting only
+# the card leaves that part of the hand unmasked, so the mark prints over it.
+HEADROOM = 110
 # rows the hand can occupy; the card's own figure is yellow too, so stop above
 # it
-FINGER_ROWS = 60
+FINGER_ROWS = HEADROOM + 60
 MARGIN = 18  # clean stock either side of the band, for tone and grain
 CHAIKIN = 3  # corner-cutting passes that round the hand's outline
 EDGE_FEATHER = 1.2  # px the band edge fades over, hiding the cut
@@ -117,17 +121,27 @@ def smooth_mask(mask, rounds):
     return out
 
 
-def hand_masks(card):
+def hand_masks(ext):
     """The cartoon hand, as a rounded mask plus a safe margin around it.
 
-    The yellow fill is grown through the drawn outline so the outline travels
-    with the hand, then rounded. `full` is that shape grown out onto plain
-    paper, and is what the erase leaves alone: a cut on the stroke would expose
-    every ragged edge, while a cut on paper joins paper to paper.
+    `ext` is card space with `HEADROOM` rows added above the card, because the
+    fingers carry on past the card's top edge and a mark drawn high on the card
+    reaches into them. Segmenting only the card leaves that part unmasked.
+
+    The gaps between fingers are backdrop, not hand: a mark drawn there must
+    still print, so the mask follows the yellow and its drawn outline and
+    nothing else.
+
+    `full` is that shape grown out onto plain paper, and is what the erase leaves
+    alone: a cut on the stroke would expose every ragged edge, while a cut on
+    paper joins paper to paper.
     """
-    hsv = cv2.cvtColor(card, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(ext, cv2.COLOR_BGR2HSV)
     h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
-    yellow = ((s > 90) & (h > 10) & (h < 45) & (v > 110)).astype(np.uint8)
+    # the backdrop behind the hand is warm brown, only a dozen degrees of hue
+    # below the fingers and fully saturated; the band has to be tight enough to
+    # exclude it, or the mask follows the backdrop instead of the ink outline
+    yellow = ((s > 150) & (h >= 20) & (h <= 34) & (v > 140)).astype(np.uint8)
     yellow = cv2.morphologyEx(yellow, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
 
     # the card's own cartoon figure is yellow too, so keep only the head of it
@@ -138,16 +152,19 @@ def hand_masks(card):
         if stats[i][4] > MIN_BLOB:
             core[lab == i] = 255
 
+    solid = core
+
     # Growth is measured from the yellow itself, not run iteratively. A
     # transitive walk through dark pixels escapes the outline wherever the
     # printed name touches it, and that name would then be restored with the
     # hand instead of erased.
-    gray = cv2.cvtColor(card, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(ext, cv2.COLOR_BGR2GRAY)
     dark = ((gray < DARKEN) * 255).astype(np.uint8)
     near = cv2.dilate(
-        core, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * GROW + 1, 2 * GROW + 1))
+        solid,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * GROW + 1, 2 * GROW + 1)),
     )
-    hand = cv2.bitwise_or(core, cv2.bitwise_and(near, dark))
+    hand = cv2.bitwise_or(solid, cv2.bitwise_and(near, dark))
     hand = smooth_mask(hand, CHAIKIN)
 
     disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * BLEED + 1, 2 * BLEED + 1))
@@ -164,9 +181,16 @@ def main():
     ph, pw = plate.shape[:2]
     H = homographies()
     inv = np.linalg.inv(H)
+    # card space shifted down by HEADROOM, so card row 0 lands on row HEADROOM
+    down = np.array([[1, 0, 0], [0, 1, HEADROOM], [0, 0, 1]], np.float64)
+    ext_inv = np.linalg.inv(down @ H)
     card = to_image(plate, H, (CARD_W, CARD_H))
+    ext = to_image(plate, down @ H, (CARD_W, CARD_H + HEADROOM))
 
-    hand, full = hand_masks(card)
+    hand_ext, full = hand_masks(ext)
+    # the erase works in card space; the mask only reaches above it for safety
+    hand = hand_ext[HEADROOM:]
+    full = full[HEADROOM:]
 
     # paint the band, then put the source image's own hand back over it
     erased = card.copy()
@@ -188,7 +212,9 @@ def main():
     # band rectangle alone -- feathering the combined mask would leave partial
     # alpha around the hand, letting the printed name bleed back through.
     clean = plate.copy()
-    hand_image = cv2.warpPerspective(hand, inv, (pw, ph), flags=cv2.INTER_NEAREST)
+    hand_image = cv2.warpPerspective(
+        hand_ext, ext_inv, (pw, ph), flags=cv2.INTER_NEAREST
+    )
     band = np.zeros((CARD_H, CARD_W), np.uint8)
     band[y0:y1, x0:x1] = 255
     band_image = cv2.warpPerspective(band, inv, (pw, ph), flags=cv2.INTER_LINEAR)
@@ -217,7 +243,8 @@ def main():
     cv2.imwrite(str(DEBUG / "header-before.png"), crop(card))
     cv2.imwrite(str(DEBUG / "header-after.png"), crop(after))
     cv2.imwrite(
-        str(DEBUG / "header-matte.png"), crop(cv2.cvtColor(hand, cv2.COLOR_GRAY2BGR))
+        str(DEBUG / "header-matte.png"),
+        crop(cv2.cvtColor(hand[HEADROOM:], cv2.COLOR_GRAY2BGR)),
     )
 
     gray = cv2.cvtColor(after, cv2.COLOR_BGR2GRAY)
