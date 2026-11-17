@@ -43,6 +43,7 @@ FINGER_ROWS = HEADROOM + 60
 MARGIN = 18  # clean stock either side of the band, for tone and grain
 CHAIKIN = 3  # corner-cutting passes that round the hand's outline
 EDGE_FEATHER = 1.2  # px the band edge fades over, hiding the cut
+HAND_FEATHER = 1.0  # px the hand's edge fades over, hiding its stair-steps
 BLEED = 0  # extra px the erase stays clear of the hand; GROW already
 # carries the mask past the outline, onto plain paper
 GROW = 3  # how far the yellow grows into its drawn outline. This is
@@ -206,24 +207,27 @@ def main():
     erased[y0:y1, x0:x1] = sub
 
     # The hand is restored in image space, straight from the original, so its
-    # pixels are identical rather than resampled twice. The band edge is faded
-    # over a couple of pixels first: a hard cut against the surrounding paper
-    # leaves a visible line right across the card. That fade is built from the
-    # band rectangle alone -- feathering the combined mask would leave partial
-    # alpha around the hand, letting the printed name bleed back through.
+    # pixels are identical rather than resampled twice. Both edges are faded
+    # rather than cut: the band edge because a hard cut leaves a visible line
+    # across the card, and the hand's because its rasterised outline is a
+    # one-pixel staircase, and a hard cut reproduces every step of it.
     clean = plate.copy()
-    hand_image = cv2.warpPerspective(
-        hand_ext, ext_inv, (pw, ph), flags=cv2.INTER_NEAREST
-    )
     band = np.zeros((CARD_H, CARD_W), np.uint8)
     band[y0:y1, x0:x1] = 255
     band_image = cv2.warpPerspective(band, inv, (pw, ph), flags=cv2.INTER_LINEAR)
     band_image = cv2.GaussianBlur(band_image, (0, 0), EDGE_FEATHER)
-    alpha = (band_image.astype(np.float32) / 255.0) * (hand_image == 0)
+
+    hand_alpha = cv2.warpPerspective(
+        hand_ext, ext_inv, (pw, ph), flags=cv2.INTER_LINEAR
+    ).astype(np.float32)
+    hand_image = (hand_alpha > 127).astype(np.uint8)
+    if HAND_FEATHER > 0:
+        hand_alpha = cv2.GaussianBlur(hand_alpha, (0, 0), HAND_FEATHER)
+
+    alpha = (band_image.astype(np.float32) / 255.0) * (1.0 - hand_alpha / 255.0)
     patched = to_image(erased, inv, (pw, ph))
     a = alpha[..., None]
     clean = np.clip(plate * (1 - a) + patched * a, 0, 255).astype(np.uint8)
-    clean[hand_image > 0] = plate[hand_image > 0]
 
     cv2.imwrite(str(CARD / "plate.jpg"), clean, [cv2.IMWRITE_JPEG_QUALITY, 94])
     # Full-size alpha mask of the hand: 255 where the fingers are, 0 elsewhere.
